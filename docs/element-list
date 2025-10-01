@@ -1,0 +1,7 @@
+com.mycompany.parchismvc.App
+com.mycompany.parchismvc.Controller
+com.mycompany.parchismvc.Model
+com.mycompany.parchismvc.Repo
+com.mycompany.parchismvc.Service
+com.mycompany.parchismvc.Util
+com.mycompany.parchismvc.View

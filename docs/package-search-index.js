@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"com.mycompany.parchismvc.App"},{"l":"com.mycompany.parchismvc.Controller"},{"l":"com.mycompany.parchismvc.Model"},{"l":"com.mycompany.parchismvc.Repo"},{"l":"com.mycompany.parchismvc.Service"},{"l":"com.mycompany.parchismvc.Util"},{"l":"com.mycompany.parchismvc.View"}];updateSearchResults();
