@@ -6,8 +6,13 @@ package com.mycompany.parchismvc.Util;
 
 /**
  *
- * @author jesus
+ * @author Equipo 1 Parchis
+ * 
  */
 public interface Dado {
+    /**
+     * Metodo que simula el lanzamiento de un dado
+     * @return un numero aleatorio entre 1 y 6
+     */
     int tirar(); // alreatorio
 }

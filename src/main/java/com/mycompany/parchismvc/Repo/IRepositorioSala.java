@@ -8,7 +8,8 @@ import com.mycompany.parchismvc.Model.Sala;
 
 /**
  *
- * @author jesus
+ * @author Equipo 1 Parchis
+ * 
  */
 public interface IRepositorioSala {
     Sala obtenerSala();

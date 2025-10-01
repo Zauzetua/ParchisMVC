@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.mycompany.parchismvc.Model;
 
 import java.util.ArrayList;
@@ -12,14 +8,33 @@ import java.util.UUID;
 
 /**
  *
- * @author jesus
+ * @author Equipo 1 Parchis
  */
 public class Sala {
 
+    /**
+     * Lista de jugadores en la sala
+     */
     public final List<Jugador> jugadores = new ArrayList<>();
+    /**
+     * Mapa que asocia a cada jugador (por su UUID) la lista de sus fichas
+     * (objetos Ficha)
+     */
     public final Map<UUID, List<Ficha>> fichasPorJugador = new HashMap<>();
+    /**
+     * Estado actual de la sala
+     */
     public EstadoSala estado = EstadoSala.ESPERANDO;
+    /**
+     * Índice del jugador cuyo turno es actualmente
+     */
     public int indiceTurno = 0;
+    /**
+     * Tiempo por turno en segundos
+     */
     public int tiempoPorTurno = 30;
+    /**
+     * UUID del jugador que ha ganado la partida, o null si no hay ganador aún
+     */
     public UUID ganador = null;
 }

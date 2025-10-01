@@ -20,19 +20,40 @@ import java.util.concurrent.TimeoutException;
 
 /**
  *
- * @author jesus
+ * @author Equipo 1 Parchis
  */
 public class Vista {
 
+    /**
+     * Controlador del juego
+     */
     private final Controlador ctl;
+    /**
+     * Scanner para leer entrada del usuario
+     */
     private final Scanner sc = new Scanner(System.in);
+    /**
+     * Executor para manejar tiempo de espera en turnos
+     */
     private final ExecutorService exe = Executors.newSingleThreadExecutor();
+    /**
+     * Tiempo de espera en segundos antes de iniciar el juego tras estar todos
+     */
     private static final int TIEMPO_ESPERA_INICIO = 10;
 
+    /**
+     * Constructor de la vista
+     * 
+     * @param ctl Controlador del juego
+     */
     public Vista(Controlador ctl) {
         this.ctl = ctl;
     }
 
+    /**
+     * Inicia la interfaz de línea de comandos.
+     * 
+     */
     public void iniciar() {
         imprimirInstrucciones();
         boolean salir = false;
@@ -44,14 +65,21 @@ public class Vista {
             if (linea.isEmpty()) {
                 continue;
             }
+            // dividir la línea en comando y argumentos
             String[] partes = linea.split("\\s+");
             String cmd = partes[0].toLowerCase(Locale.ROOT);
 
             try {
                 switch (cmd) {
+                    /**
+                     * Mostrar instrucciones de uso
+                     */
                     case "help", "ayuda":
                         imprimirInstrucciones();
                         break;
+                    /**
+                     * Registrar un nuevo jugador en la sala.
+                     */
                     case "registro": {
                         if (partes.length < 2) {
                             System.out.println("Uso: registro <nombre> [avatar]");
@@ -64,6 +92,9 @@ public class Vista {
                         System.out.println("Registrado: " + j.nombre + " id=" + j.id);
                         break;
                     }
+                    /**
+                     * Elegir color para un jugador registrado.
+                     */
                     case "elegircolor": {
                         if (partes.length < 3) {
                             System.out.println("Uso: elegircolor <nombre> <COLOR>");
@@ -80,10 +111,13 @@ public class Vista {
                             ColorJugador color = ColorJugador.valueOf(colorTxt);
                             System.out.println(ctl.elegirColor(id, color));
                         } catch (IllegalArgumentException ex) {
-                            System.out.println("Color inválido");
+                            System.out.println("Color invalido");
                         }
                         break;
                     }
+                    /**
+                     * Marcar un jugador como listo para iniciar el juego.
+                     */
                     case "listo": {
                         if (partes.length < 2) {
                             System.out.println("Uso: listo <nombre>");
@@ -104,6 +138,9 @@ public class Vista {
                         }
                         break;
                     }
+                    /**
+                     * Cancelar el estado de listo de un jugador
+                     */
                     case "cancelar": {
                         if (partes.length < 2) {
                             System.out.println("Uso: cancelar <nombre>");
@@ -117,6 +154,9 @@ public class Vista {
                         System.out.println(ctl.cancelar(id));
                         break;
                     }
+                    /**
+                     * Establecer el tiempo por turno antes de iniciar el juego
+                     */
                     case "tiempo":
                         if (partes.length < 2) {
                             System.out.println("Uso: tiempo <segundos>");
@@ -126,16 +166,28 @@ public class Vista {
                         ctl.setTiempo(seg);
                         System.out.println("Tiempo por turno ajustado a " + seg + "s");
                         break;
+                    /**
+                     * Forzar el inicio del juego si hay al menos 2 jugadores
+                     */
                     case "iniciar":
                         System.out.println(ctl.forzarIniciar());
                         cuentaRegresivaYComienza();
                         break;
+                    /**
+                     * Mostrar el estado actual de la sala
+                     */
                     case "estado":
                         System.out.println(ctl.estado());
                         break;
+                    /**
+                     * Entrar al modo juego interactivo
+                     */
                     case "jugar":
                         modoJuego(aliasJugadores);
                         break;
+                    /**
+                     * Salir del programa
+                     */
                     case "salir":
                         salir = true;
                         break;
@@ -152,6 +204,9 @@ public class Vista {
         System.out.println("Saliendo...");
     }
 
+    /**
+     * Imprime las instrucciones de uso.
+     */
     private void imprimirInstrucciones() {
         System.out.println("COMANDOS:");
         System.out.println("  registro <nombre> [avatar]     - registrar un jugador");
@@ -166,6 +221,10 @@ public class Vista {
         System.out.println("");
     }
 
+    /**
+     * Inicia una cuenta regresiva y comienza el juego si la sala está en estado
+     * INICIANDO.
+     */
     private void cuentaRegresivaYComienza() {
         Sala s = ctl.sala();
         if (s.estado != EstadoSala.INICIANDO) {
@@ -231,7 +290,8 @@ public class Vista {
                         if (v == 0) {
                             System.out.println("No es tu turno o error");
                         } else {
-                            System.out.println("Resultado del dado: " + v + (v == 6 ? " (¡6! Turno extra si mueves correctamente)" : ""));
+                            System.out.println("Resultado del dado: " + v
+                                    + (v == 6 ? " (¡6! Turno extra si mueves correctamente)" : ""));
                         }
                         break;
                     }
@@ -254,7 +314,8 @@ public class Vista {
                         System.out.println(res);
                         if (ctl.sala().estado == EstadoSala.FINALIZADA) {
                             System.out.println("Juego finalizado. Ganador: "
-                                    + ctl.sala().jugadores.stream().filter(j -> j.id.equals(ctl.sala().ganador)).findFirst().map(j -> j.nombre).orElse("n/a"));
+                                    + ctl.sala().jugadores.stream().filter(j -> j.id.equals(ctl.sala().ganador))
+                                            .findFirst().map(j -> j.nombre).orElse("n/a"));
                             modo = false;
                         }
                         break;

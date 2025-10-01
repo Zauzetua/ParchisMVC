@@ -1,14 +1,9 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.mycompany.parchismvc.Model;
 
 /**
  *
- * @author jesus
+ * @author Equipo 1 Parchis
+ * Enum que representa los estados posibles de una ficha en el juego.
  */
-
-
 public enum EstadoFicha { BASE, EN_TABLERO, CASA }
 

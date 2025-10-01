@@ -8,10 +8,16 @@ import java.util.Random;
 
 /**
  *
- * @author jesus
+ * @author Equipo 1 Parchis
  */
 public class DadoAleatorio implements Dado {
+    /**
+     * Generador de numeros aleatorios
+     */
     private final Random rng = new Random();
+    /**
+     * Metodo que simula el lanzamiento de un dado
+     */
     @Override
     public int tirar() { return rng.nextInt(6) + 1; }
 }

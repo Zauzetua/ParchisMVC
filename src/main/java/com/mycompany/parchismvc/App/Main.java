@@ -14,17 +14,19 @@ import com.mycompany.parchismvc.View.Vista;
 
 /**
  *
- * @author jesus
+ * @author Equipo 1 Parchis
+ * Clase main, punto de entrada a la aplicacion
  */
 public class Main {
     public static void main(String[] args) {
+        // Configuracion de componentes MVC
         IRepositorioSala repo = new RepositorioSalaMemoria();
         Dado dado = new DadoAleatorio();
         ServicioJuego servicio = new ServicioJuego(repo, dado);
         Controlador controlador = new Controlador(servicio);
         Vista vista = new Vista(controlador);
 
-        System.out.println("PARCHÍS - Demo MVC consola (reglas simplificadas)");
+        System.out.println("PARCHIS - Demo MVC consola");
         System.out.println("Comienza registrando jugadores con: registro <nombre> [avatar]");
         System.out.println("Recomendado: crear al menos 2 jugadores y que elijan color antes de 'listo'.\n");
 

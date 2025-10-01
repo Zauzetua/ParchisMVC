@@ -6,6 +6,7 @@ package com.mycompany.parchismvc.Model;
 
 /**
  *
- * @author jesus
+ * @author Equipo 1 Parchis
+ * Enum que representa los colores disponibles para los jugadores.
  */
 public enum ColorJugador { ROJO, AZUL, VERDE, AMARILLO }

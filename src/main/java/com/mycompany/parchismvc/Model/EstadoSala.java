@@ -1,11 +1,8 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.mycompany.parchismvc.Model;
 
 /**
  *
- * @author jesus
+ * @author Equipo 1 Parchis
+ * Enum que representa los estados posibles de una sala en el juego.
  */
 public enum EstadoSala { ESPERANDO, INICIANDO, JUGANDO, FINALIZADA }

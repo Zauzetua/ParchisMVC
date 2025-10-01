@@ -8,10 +8,18 @@ import com.mycompany.parchismvc.Model.Sala;
 
 /**
  *
- * @author jesus
+ * @author Equipo 1 Parchis
+ * Clase que implementa el repositorio de la sala en memoria.
  */
 public class RepositorioSalaMemoria implements IRepositorioSala {
+    /**
+     * Sala en memoria.
+     */
     private final Sala sala = new Sala();
+    /**
+     * Metodo que obtiene la sala en memoria.
+     * @return Sala en memoria.
+     */
     @Override
     public Sala obtenerSala() { return sala; }
 }
