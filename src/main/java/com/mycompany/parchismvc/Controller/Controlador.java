@@ -88,6 +88,21 @@ public class Controlador {
     }
 
     /**
+     * Pasa el turno del jugador actual por tiempo agotado.
+     */
+    public void pasarTurnoPorTiempo() {
+        servicio.pasarTurnoPorTiempo();
+    }
+
+    /**
+     * Permite al jugador actual pasar turno voluntariamente.
+     * @param jugadorId ID del jugador.
+     */
+    public void pasarTurno(UUID jugadorId) {
+        servicio.pasarTurno(jugadorId);
+    }
+
+    /**
      * Permite a un jugador tirar el dado.
      * @param jugadorId ID del jugador.
      * @return Resultado de la tirada.
@@ -128,5 +143,14 @@ public class Controlador {
      */
     public Sala sala() {
         return servicio.sala();
+    }
+
+    /**
+     * Devuelve indices de fichas movibles para el jugador actual con su tirada pendiente.
+     * @param jugadorId Jugador
+     * @return Lista de indices movibles
+     */
+    public java.util.List<Integer> fichasMovibles(java.util.UUID jugadorId) {
+        return servicio.fichasMovibles(jugadorId);
     }
 }

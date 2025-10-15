@@ -242,7 +242,15 @@ public class ServicioJuego {
      */
     public int tirarDado(UUID jugadorId) {
         Jugador actual = jugadorActual();
+        Sala s = sala();
+        if (s.estado != EstadoSala.JUGANDO) {
+            return 0;
+        }
         if (actual == null || !actual.id.equals(jugadorId)) {
+            return 0;
+        }
+        // Evitar segunda tirada si ya existe un valor pendiente
+        if (ultimoValorTirado.containsKey(jugadorId)) {
             return 0;
         }
         int valor = dado.tirar();
@@ -440,6 +448,41 @@ public class ServicioJuego {
     }
 
     /**
+     * Limpia el estado de tirada/turno extra del jugador indicado.
+     */
+    private void limpiarEstadoTirada(UUID jugadorId) {
+        ultimoValorTirado.remove(jugadorId);
+        tieneTurnoExtra.remove(jugadorId);
+    }
+
+    /**
+     * Pasa el turno del jugador actual por agotamiento de tiempo.
+     * Limpia cualquier tirada pendiente y turno extra, y avanza el turno.
+     */
+    public void pasarTurnoPorTiempo() {
+        Jugador actual = jugadorActual();
+        if (actual == null) {
+            return;
+        }
+        limpiarEstadoTirada(actual.id);
+        avanzarTurno();
+    }
+
+    /**
+     * Permite al jugador actual pasar turno voluntariamente.
+     * Si no es su turno, no hace nada.
+     * @param jugadorId Jugador que solicita pasar turno.
+     */
+    public void pasarTurno(UUID jugadorId) {
+        Jugador actual = jugadorActual();
+        if (actual == null || !actual.id.equals(jugadorId)) {
+            return;
+        }
+        limpiarEstadoTirada(jugadorId);
+        avanzarTurno();
+    }
+
+    /**
      * Comprueba si el jugador ha ganado (todas sus fichas en casa) y actualiza el
      * estado de la sala
      * 
@@ -496,6 +539,65 @@ public class ServicioJuego {
      */
     public void setTiempoPorTurno(int segundos) {
         sala().tiempoPorTurno = segundos;
+    }
+
+    /**
+     * Devuelve los indices de fichas del jugador actual que pueden moverse con
+     * el valor de dado pendiente. Si no es su turno o no hay valor pendiente,
+     * devuelve lista vacia.
+     * @param jugadorId Jugador a evaluar
+     * @return Lista de indices de fichas movibles
+     */
+    public List<Integer> fichasMovibles(UUID jugadorId) {
+        List<Integer> movibles = new ArrayList<>();
+        Sala s = sala();
+        Jugador actual = jugadorActual();
+        if (s.estado != EstadoSala.JUGANDO || actual == null || !actual.id.equals(jugadorId)) {
+            return movibles;
+        }
+        Integer valor = ultimoValorTirado.get(jugadorId);
+        if (valor == null || valor == 0) {
+            return movibles;
+        }
+        List<Ficha> mis = s.fichasPorJugador.get(jugadorId);
+        if (mis == null) {
+            return movibles;
+        }
+        for (int i = 0; i < mis.size(); i++) {
+            Ficha f = mis.get(i);
+            if (f.estado == EstadoFicha.CASA) {
+                continue;
+            }
+            if (f.estado == EstadoFicha.BASE) {
+                if (valor == 5) {
+                    movibles.add(i);
+                }
+                continue;
+            }
+            if (f.estado == EstadoFicha.EN_TABLERO) {
+                int destino = f.posicion + valor;
+                int posMeta = inicioPorColor.get(actual.color) + TAM_TABLERO;
+                if (destino >= posMeta) {
+                    movibles.add(i);
+                } else {
+                    boolean bloqueado = false;
+                    for (int paso = 1; paso <= valor; paso++) {
+                        int inter = f.posicion + paso;
+                        if (inter < posMeta) {
+                            int mod = inter % TAM_TABLERO;
+                            if (posicionBloqueadaPorRival(mod, actual.id)) {
+                                bloqueado = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!bloqueado) {
+                        movibles.add(i);
+                    }
+                }
+            }
+        }
+        return movibles;
     }
 
 }
