@@ -45,3 +45,4 @@ bin/
 
 # MacOS
 .DS_Store
+/nbproject/

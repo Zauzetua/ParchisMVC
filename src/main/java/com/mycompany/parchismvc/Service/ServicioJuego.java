@@ -58,7 +58,7 @@ public class ServicioJuego {
     /**
      * Ultimo valor tirado por cada jugador en su turno (si ya ha tirado)
      */
-    private final Map<UUID, Integer> ultimoValorTirado = new HashMap<>();
+    public  Map<UUID, Integer> ultimoValorTirado = new HashMap<>();
     /**
      * Indica si el jugador tiene un turno extra (por haber sacado un 6)
      */
@@ -139,7 +139,7 @@ public class ServicioJuego {
             return "Elige un color antes de marcar listo";
         }
         j.listo = true;
-        return j.nombre + " está listo";
+        return j.nombre + " esta listo";
     }
 
     /**
@@ -154,7 +154,7 @@ public class ServicioJuego {
             return "Jugador no encontrado";
         }
         j.listo = false;
-        return j.nombre + " canceló listo";
+        return j.nombre + " cancelo listo";
     }
 
     /**
@@ -193,6 +193,15 @@ public class ServicioJuego {
         Sala s = sala();
         if (s.jugadores.size() < MIN_JUGADORES) {
             return "No hay suficientes jugadores para iniciar";
+        }
+        //asignar colores automaticos si no los tienen
+        ColorJugador[] colores = ColorJugador.values();
+        int idx = 0;
+        for (Jugador j : s.jugadores) {
+            if (j.color == null) {
+                j.color = colores[idx];
+                idx = (idx + 1) % colores.length;
+            }
         }
         s.estado = EstadoSala.INICIANDO;
         return "Forzando inicio...";
@@ -599,5 +608,7 @@ public class ServicioJuego {
         }
         return movibles;
     }
+    
+    
 
 }
