@@ -24,6 +24,7 @@ import java.util.concurrent.TimeoutException;
  */
 public class Vista {
 
+    
     /**
      * Controlador del juego
      */
@@ -48,13 +49,35 @@ public class Vista {
      */
     public Vista(Controlador ctl) {
         this.ctl = ctl;
+        ctl.setVista(this);
     }
+    
+    private boolean avisoModoMostrado = false;
+    private volatile boolean enModoJuegoFlag = false;
+    
+   
+    
+
+public void sugerirEntrarModoJuego() {
+    if (!avisoModoMostrado) {
+        System.out.println("Juego iniciado. Escribe 'jugar' para entrar al modo juego.");
+        avisoModoMostrado = true;
+    }
+}
+
+public void resetSugerenciaModo() {
+    avisoModoMostrado = false;
+}
+    
 
     /**
      * Inicia la interfaz de línea de comandos.
      * 
      */
     public void iniciar() {
+         // Conexión al servidor (ajusta host/puerto/sala)
+    ctl.conectarRed("127.0.0.1", 5000, "sala1");
+        
         imprimirInstrucciones();
         boolean salir = false;
         Map<String, UUID> aliasJugadores = new HashMap<>();
@@ -87,9 +110,9 @@ public class Vista {
                         }
                         String nombre = partes[1];
                         String avatar = partes.length >= 3 ? partes[2] : "avatar.png";
-                        Jugador j = ctl.registrar(nombre, avatar);
-                        aliasJugadores.put(nombre, j.id);
-                        System.out.println("Registrado: " + j.nombre + " id=" + j.id);
+                        java.util.UUID id = ctl.registrar(nombre, avatar);           // <— ahora devuelve UUID
+                        aliasJugadores.put(nombre, id);
+                        System.out.println("Registrado: " + nombre + " id=" + id);
                         break;
                     }
                     /**
@@ -244,78 +267,61 @@ public class Vista {
         }).start();
     }
 
-    private void modoJuego(Map<String, UUID> aliasJugadores) {
-        Sala s = ctl.sala();
-        if (s.estado != EstadoSala.JUGANDO) {
-            System.out.println("El juego no ha iniciado aún.");
-            return;
-        }
-        System.out.println("Modo juego interactivo:");
-        System.out.println("  tirar <nombre>");
-        System.out.println("  mover <nombre> <indiceFicha>");
-        System.out.println("  estado");
-        System.out.println("  salirmodo");
+   private void modoJuego(Map<String, UUID> aliasJugadores) {
+    Sala s = ctl.sala();
+    if (s == null || s.estado != EstadoSala.JUGANDO) {
+        System.out.println("El juego no ha iniciado aún.");
+        return;
+    }
+
+    System.out.println("Modo juego interactivo:");
+    System.out.println("  tirar <nombre>");
+    System.out.println("  mover <nombre> <indiceFicha>");
+    System.out.println("  estado");
+    System.out.println("  salirmodo");
+
+    enModoJuegoFlag = true;                 // <<-- ENTRA EN MODO
+    try {
         boolean modo = true;
         while (modo) {
             Jugador turnoJugador = ctl.sala().jugadores.get(ctl.sala().indiceTurno);
             System.out.print("[Turno: " + turnoJugador.nombre + "] > ");
-            String linea = leerLineaConTimeout(s.tiempoPorTurno);
-            if (linea == null) {
-                System.out.println("Tiempo agotado. Turno pasado.");
-                ctl.sala().indiceTurno = (ctl.sala().indiceTurno + 1) % ctl.sala().jugadores.size();
-                continue;
-            }
+
+            // SIN timeout: bloqueante, no devuelve null
+            String linea = sc.nextLine();
+            if (linea == null) continue;    // por seguridad, pero nextLine() no devuelve null normalmente
             String[] partes = linea.trim().split("\\s+");
-            if (partes.length == 0) {
-                continue;
-            }
+            if (partes.length == 0 || partes[0].isEmpty()) continue;
+
             String cmd = partes[0].toLowerCase(Locale.ROOT);
             try {
                 switch (cmd) {
                     case "tirar": {
-                        if (partes.length < 2) {
-                            System.out.println("Uso: tirar <nombre>");
-                            break;
-                        }
+                        if (partes.length < 2) { System.out.println("Uso: tirar <nombre>"); break; }
                         UUID id = aliasJugadores.get(partes[1]);
-                        if (id == null) {
-                            System.out.println("Jugador no registrado");
-                            break;
-                        }
-                        if (!turnoJugador.id.equals(id)) {
-                            System.out.println("No es tu turno");
-                            break;
-                        }
-                        int v = ctl.tirar(id);
-                        if (v == 0) {
-                            System.out.println("No es tu turno o error");
-                        } else {
-                            System.out.println("Resultado del dado: " + v
-                                    + (v == 6 ? " (¡6! Turno extra si mueves correctamente)" : ""));
-                        }
+                        if (id == null) { System.out.println("Jugador no registrado"); break; }
+                        if (!turnoJugador.id.equals(id)) { System.out.println("No es tu turno"); break; }
+
+                        int v = ctl.tirar(id);       // en red: envía TirarDadoCmd
+                        if (v == 0) System.out.println("No es tu turno o ya tiraste.");
+                        else System.out.println("Resultado del dado: " + v + (v == 6 ? " (¡6! turno extra si mueves)" : ""));
                         break;
                     }
                     case "mover": {
-                        if (partes.length < 3) {
-                            System.out.println("Uso: mover <nombre> <indiceFicha>");
-                            break;
-                        }
+                        if (partes.length < 3) { System.out.println("Uso: mover <nombre> <indiceFicha>"); break; }
                         UUID id = aliasJugadores.get(partes[1]);
-                        if (id == null) {
-                            System.out.println("Jugador no registrado");
-                            break;
-                        }
-                        if (!turnoJugador.id.equals(id)) {
-                            System.out.println("No es tu turno");
-                            break;
-                        }
+                        if (id == null) { System.out.println("Jugador no registrado"); break; }
+                        if (!turnoJugador.id.equals(id)) { System.out.println("No es tu turno"); break; }
+
                         int idx = Integer.parseInt(partes[2]);
-                        String res = ctl.mover(id, idx);
+                        String res = ctl.mover(id, idx);   // en red: envía MoverCmd
                         System.out.println(res);
+
                         if (ctl.sala().estado == EstadoSala.FINALIZADA) {
-                            System.out.println("Juego finalizado. Ganador: "
-                                    + ctl.sala().jugadores.stream().filter(j -> j.id.equals(ctl.sala().ganador))
-                                            .findFirst().map(j -> j.nombre).orElse("n/a"));
+                            String ganador = ctl.sala().jugadores.stream()
+                                    .filter(j -> j.id.equals(ctl.sala().ganador))
+                                    .findFirst().map(j -> j.nombre).orElse("n/a");
+                            System.out.println("Juego finalizado. Ganador: " + ganador);
                             modo = false;
                         }
                         break;
@@ -333,24 +339,65 @@ public class Vista {
                 System.out.println("Error: " + ex.getMessage());
             }
         }
+    } finally {
+        enModoJuegoFlag = false;            // <<-- SALE DE MODO
     }
+}
 
-    private String leerLineaConTimeout(int segundos) {
-        Future<String> futuro = exe.submit(() -> {
-            try {
-                return sc.nextLine();
-            } catch (NoSuchElementException e) {
-                return null;
+     public void repintarPromptTurno() {
+    if (!enModoJuegoFlag) return;
+    try {
+        var s = ctl.sala();
+        var turnoJugador = s.jugadores.get(s.indiceTurno);
+        System.out.print("\n[Turno: " + turnoJugador.nombre + "] > ");
+        System.out.flush();
+    } catch (Exception ignored) {}
+}
+    
+// ====== GANCHOS PARA RED (mensajes simples) ======
+public static void mostrarError(String msg) {
+    System.err.println("[ERROR] " + msg);
+}
+public static void mostrarInfo(String msg) {
+    System.out.println("[INFO] " + msg);
+}
+public void mostrarChat(String txt) {
+    System.out.println("[CHAT] " + txt);
+}
+public void mostrarDado(UUID jugadorId, int valor) {
+    System.out.println("[DADO] Jugador " + jugadorId + " sacó: " + valor);
+}
+/** Render rápido del snapshot que envía el servidor */
+public static void actualizarEstado(Sala sala, UUID turnoDe, UUID miId) {
+    if (sala == null) { System.out.println("[ESTADO] (sin sala)"); return; }
+    System.out.println("======= ESTADO DE SALA =======");
+    System.out.println("Estado: " + sala.estado + " | Tiempo por turno: " + sala.tiempoPorTurno + "s");
+    System.out.println("Jugadores (" + sala.jugadores.size() + "):");
+    for (var j : sala.jugadores) {
+        String soy = (miId != null && miId.equals(j.id)) ? " <— YO" : "";
+        String turno = (turnoDe != null && turnoDe.equals(j.id)) ? " [EN TURNO]" : "";
+        String listo = j.listo ? " [LISTO]" : "";
+        String color = (j.color == null) ? "sin color" : j.color.name();
+        System.out.println(" - " + j.nombre + " | id=" + j.id + " | " + color + listo + turno + soy);
+        var mis = sala.fichasPorJugador.get(j.id);
+        if (mis != null) {
+            for (int i = 0; i < mis.size(); i++) {
+                var f = mis.get(i);
+                String pos = switch (f.estado) {
+                    case BASE -> "BASE";
+                    case CASA -> "CASA";
+                    default -> "pos=" + f.posicion;
+                };
+                System.out.println("     [" + i + "] " + f.estado + " (" + pos + ")");
             }
-        });
-        try {
-            return futuro.get(segundos, TimeUnit.SECONDS);
-        } catch (TimeoutException te) {
-            futuro.cancel(true);
-            return null;
-        } catch (Exception e) {
-            futuro.cancel(true);
-            return null;
         }
     }
+    if (sala.ganador != null) {
+        var g = sala.jugadores.stream().filter(x -> x.id.equals(sala.ganador)).findFirst().orElse(null);
+        System.out.println("GANADOR: " + (g == null ? sala.ganador : g.nombre));
+    }
+    System.out.println("================================\n");
+    }
+
+   
 }

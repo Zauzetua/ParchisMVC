@@ -1,5 +1,6 @@
 package com.mycompany.parchismvc.Model;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -10,7 +11,8 @@ import java.util.UUID;
  *
  * @author Equipo 1 Parchis
  */
-public class Sala {
+public class Sala implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     /**
      * Lista de jugadores en la sala

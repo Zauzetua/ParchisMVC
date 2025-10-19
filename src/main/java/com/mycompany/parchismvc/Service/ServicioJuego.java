@@ -209,6 +209,8 @@ public class ServicioJuego {
         ultimoValorTirado.clear();
         tieneTurnoExtra.clear();
         s.ganador = null;
+        
+        for (Jugador j : sala().jugadores) j.listo = false;
     }
 
     /**
@@ -488,6 +490,16 @@ public class ServicioJuego {
         sb.append("=========================\n");
         return sb.toString();
     }
+    
+    
+    public void pasarTurnoPorTiempo() {
+    Jugador actual = jugadorActual();
+    if (actual == null) return;
+    // si había un valor de dado pendiente, lo descartamos
+    ultimoValorTirado.remove(actual.id);
+    tieneTurnoExtra.put(actual.id, false);
+    avanzarTurno(); // método privado de la misma clase
+}
 
     /**
      * Obtiene el tiempo por turno en segundos

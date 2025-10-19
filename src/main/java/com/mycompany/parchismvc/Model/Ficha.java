@@ -4,6 +4,7 @@
  */
 package com.mycompany.parchismvc.Model;
 
+import java.io.Serializable;
 import java.util.UUID;
 
 /**
@@ -11,7 +12,9 @@ import java.util.UUID;
  * @author Equipo 1 Parchis
  * Clase que representa una ficha en el juego de Parchis.
  */
-public class Ficha {
+public class Ficha implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     /**
      * ID unico de la ficha.
      */
