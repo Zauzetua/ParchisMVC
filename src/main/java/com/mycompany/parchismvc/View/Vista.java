@@ -5,18 +5,14 @@ import com.mycompany.parchismvc.Model.ColorJugador;
 import com.mycompany.parchismvc.Model.EstadoSala;
 import com.mycompany.parchismvc.Model.Jugador;
 import com.mycompany.parchismvc.Model.Sala;
-import com.mycompany.parchismvc.Service.ServicioJuego;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+
 
 /**
  *
@@ -52,181 +48,173 @@ public class Vista {
         ctl.setVista(this);
     }
     
-    private boolean avisoModoMostrado = false;
+    // Esto es para que los jugadores le piquen a juagr para cuando todos esten listo 
+    //private boolean avisoModoMostrado = false;
+    
     private volatile boolean enModoJuegoFlag = false;
     
+    private boolean ayudaModoMostrada = false;
    
     
+// checando 
+//public void sugerirEntrarModoJuego() {
+//    if (!avisoModoMostrado) {
+//        System.out.println("Juego iniciado. Escribe 'jugar' para entrar al modo juego.");
+//        avisoModoMostrado = true;
+//    }
+//}
 
-public void sugerirEntrarModoJuego() {
-    if (!avisoModoMostrado) {
-        System.out.println("Juego iniciado. Escribe 'jugar' para entrar al modo juego.");
-        avisoModoMostrado = true;
-    }
-}
-
-public void resetSugerenciaModo() {
-    avisoModoMostrado = false;
-}
+//public void resetSugerenciaModo() {
+//    avisoModoMostrado = false;
+//}
     
 
     /**
      * Inicia la interfaz de línea de comandos.
      * 
      */
+
+     
+
     public void iniciar() {
-         // Conexión al servidor (ajusta host/puerto/sala)
+         // Conexión al servidor (ajustar host/puerto/sala)
     ctl.conectarRed("127.0.0.1", 5000, "sala1");
         
         imprimirInstrucciones();
         boolean salir = false;
         Map<String, UUID> aliasJugadores = new HashMap<>();
 
-        while (!salir) {
-            System.out.print("> ");
-            String linea = sc.nextLine().trim();
-            if (linea.isEmpty()) {
+         while (!salir) {
+
+        // === AUTO-ENTRAR A MODO JUEGO CUANDO EL SERVIDOR ESTE JUGANDO we===
+        try {
+            Sala st = ctl.sala();
+            if (!enModoJuegoFlag && st != null && st.estado == EstadoSala.JUGANDO) {
+                enModoJuegoFlag = true;
+                try {
+                    modoJuego(aliasJugadores);
+                } finally {
+                    enModoJuegoFlag = false;
+                }
                 continue;
             }
-            // dividir la línea en comando y argumentos
-            String[] partes = linea.split("\\s+");
-            String cmd = partes[0].toLowerCase(Locale.ROOT);
+        } catch (Exception ignored) {}
 
-            try {
-                switch (cmd) {
-                    /**
-                     * Mostrar instrucciones de uso
-                     */
-                    case "help", "ayuda":
-                        imprimirInstrucciones();
-                        break;
-                    /**
-                     * Registrar un nuevo jugador en la sala.
-                     */
-                    case "registro": {
-                        if (partes.length < 2) {
-                            System.out.println("Uso: registro <nombre> [avatar]");
-                            break;
-                        }
-                        String nombre = partes[1];
-                        String avatar = partes.length >= 3 ? partes[2] : "avatar.png";
-                        java.util.UUID id = ctl.registrar(nombre, avatar);           // <— ahora devuelve UUID
-                        aliasJugadores.put(nombre, id);
-                        System.out.println("Registrado: " + nombre + " id=" + id);
-                        break;
-                    }
-                    /**
-                     * Elegir color para un jugador registrado.
-                     */
-                    case "elegircolor": {
-                        if (partes.length < 3) {
-                            System.out.println("Uso: elegircolor <nombre> <COLOR>");
-                            break;
-                        }
-                        String nombre = partes[1];
-                        String colorTxt = partes[2].toUpperCase(Locale.ROOT);
-                        UUID id = aliasJugadores.get(nombre);
-                        if (id == null) {
-                            System.out.println("Jugador no registrado: " + nombre);
-                            break;
-                        }
-                        try {
-                            ColorJugador color = ColorJugador.valueOf(colorTxt);
-                            System.out.println(ctl.elegirColor(id, color));
-                        } catch (IllegalArgumentException ex) {
-                            System.out.println("Color invalido");
-                        }
-                        break;
-                    }
-                    /**
-                     * Marcar un jugador como listo para iniciar el juego.
-                     */
-                    case "listo": {
-                        if (partes.length < 2) {
-                            System.out.println("Uso: listo <nombre>");
-                            break;
-                        }
-                        UUID id = aliasJugadores.get(partes[1]);
-                        if (id == null) {
-                            System.out.println("Jugador no registrado");
-                            break;
-                        }
-                        System.out.println(ctl.listo(id));
-                        // si todos listos, iniciar cuenta regresiva
-                        if (ctl.sala().estado == EstadoSala.ESPERANDO
-                                && ctl.sala().jugadores.size() >= ServicioJuego.MIN_JUGADORES) {
-                            if (ctl.iniciarSiListos().startsWith("Iniciando")) {
-                                cuentaRegresivaYComienza();
-                            }
-                        }
-                        break;
-                    }
-                    /**
-                     * Cancelar el estado de listo de un jugador
-                     */
-                    case "cancelar": {
-                        if (partes.length < 2) {
-                            System.out.println("Uso: cancelar <nombre>");
-                            break;
-                        }
-                        UUID id = aliasJugadores.get(partes[1]);
-                        if (id == null) {
-                            System.out.println("Jugador no registrado");
-                            break;
-                        }
-                        System.out.println(ctl.cancelar(id));
-                        break;
-                    }
-                    /**
-                     * Establecer el tiempo por turno antes de iniciar el juego
-                     */
-                    case "tiempo":
-                        if (partes.length < 2) {
-                            System.out.println("Uso: tiempo <segundos>");
-                            break;
-                        }
-                        int seg = Integer.parseInt(partes[1]);
-                        ctl.setTiempo(seg);
-                        System.out.println("Tiempo por turno ajustado a " + seg + "s");
-                        break;
-                    /**
-                     * Forzar el inicio del juego si hay al menos 2 jugadores
-                     */
-                    case "iniciar":
-                        System.out.println(ctl.forzarIniciar());
-                        cuentaRegresivaYComienza();
-                        break;
-                    /**
-                     * Mostrar el estado actual de la sala
-                     */
-                    case "estado":
-                        System.out.println(ctl.estado());
-                        break;
-                    /**
-                     * Entrar al modo juego interactivo
-                     */
-                    case "jugar":
-                        modoJuego(aliasJugadores);
-                        break;
-                    /**
-                     * Salir del programa
-                     */
-                    case "salir":
-                        salir = true;
-                        break;
-                    default:
-                        System.out.println("Comando no reconocido. 'help' para ver comandos.");
-                }
-            } catch (Exception ex) {
-                System.out.println("Error: " + ex.getMessage());
-                ex.printStackTrace(System.out);
-            }
+        System.out.print("> ");
+        String linea = sc.nextLine().trim();
+        if (linea.isEmpty()) {
+            continue;
         }
+        String[] partes = linea.split("\\s+");
+        String cmd = partes[0].toLowerCase(Locale.ROOT);
 
-        exe.shutdownNow();
-        System.out.println("Saliendo...");
+        try {
+            switch (cmd) {
+                case "help", "ayuda" -> imprimirInstrucciones();
+
+                case "registro" -> {
+                    if (partes.length < 2) {
+                        System.out.println("Uso: registro <nombre> [avatar]");
+                        break;
+                    }
+                    String nombre = partes[1];
+                    String avatar = (partes.length >= 3 ? partes[2] : "avatar.png");
+                    UUID id = ctl.registrar(nombre, avatar);
+                    aliasJugadores.put(nombre, id);
+                    System.out.println("Registrado: " + nombre + " id=" + id);
+                }
+
+                case "elegircolor" -> {
+                    if (partes.length < 3) {
+                        System.out.println("Uso: elegircolor <nombre> <COLOR>");
+                        break;
+                    }
+                    String nombre = partes[1];
+                    String colorTxt = partes[2].toUpperCase(Locale.ROOT);
+                    UUID id = aliasJugadores.get(nombre);
+                    if (id == null) { System.out.println("Jugador no registrado: " + nombre); break; }
+                    try {
+                        ColorJugador color = ColorJugador.valueOf(colorTxt);
+                        System.out.println(ctl.elegirColor(id, color));
+                    } catch (IllegalArgumentException ex) {
+                        System.out.println("Color invalido");
+                    }
+                }
+
+                case "listo" -> {
+                    if (partes.length < 2) {
+                        System.out.println("Uso: listo <nombre>");
+                        break;
+                    }
+                    UUID id = aliasJugadores.get(partes[1]);
+                    if (id == null) { System.out.println("Jugador no registrado"); break; }
+                    // El servidor se encarga de la cuenta atrás e inicio automático
+                    System.out.println(ctl.listo(id));
+                }
+
+                case "cancelar" -> {
+                    if (partes.length < 2) {
+                        System.out.println("Uso: cancelar <nombre>");
+                        break;
+                    }
+                    UUID id = aliasJugadores.get(partes[1]);
+                    if (id == null) { System.out.println("Jugador no registrado"); break; }
+                    System.out.println(ctl.cancelar(id));
+                }
+
+                case "tiempo" -> {
+                    if (partes.length < 2) {
+                        System.out.println("Uso: tiempo <segundos>");
+                        break;
+                    }
+                    int seg = Integer.parseInt(partes[1]);
+                    ctl.setTiempo(seg); // el servidor lo difundirá por ESTADO/RESULTADO
+                    System.out.println("Tiempo por turno ajustado a " + seg + "s");
+                }
+
+                case "iniciar" -> {
+                    // Solicita el inicio si todos están listos; el servidor hará cuenta atrás y empezar
+                    System.out.println(ctl.iniciarSiListos());
+                }
+
+                case "estado" -> System.out.println(ctl.estado());
+
+                case "jugar" -> {
+                    // Plan b si no jala alv
+                    modoJuego(aliasJugadores);
+                }
+
+                case "salir" -> salir = true;
+
+                default -> System.out.println("Comando no reconocido. 'help' para ver comandos.");
+            }
+        } catch (Exception ex) {
+            System.out.println("Error: " + ex.getMessage());
+            ex.printStackTrace(System.out);
+        }
     }
 
+    exe.shutdownNow();
+    System.out.println("Saliendo...");
+}
+
+    /*
+    Calando imprimir instrucciones para jugar alv
+    */
+    public void mostrarComandosModoJuegoSiHaceFalta() {
+    if (ayudaModoMostrada) return;
+    System.out.println("Modo juego interactivo:");
+    System.out.println("  tirar <nombre>");
+    System.out.println("  mover <nombre> <indiceFicha>");
+    System.out.println("  estado");
+    System.out.println("  salirmodo");
+    ayudaModoMostrada = true;
+}
+    
+    public void resetAyudaModo(){
+        ayudaModoMostrada = false; 
+    }
+    
     /**
      * Imprime las instrucciones de uso.
      */
@@ -248,25 +236,7 @@ public void resetSugerenciaModo() {
      * Inicia una cuenta regresiva y comienza el juego si la sala está en estado
      * INICIANDO.
      */
-    private void cuentaRegresivaYComienza() {
-        Sala s = ctl.sala();
-        if (s.estado != EstadoSala.INICIANDO) {
-            return;
-        }
-        new Thread(() -> {
-            try {
-                for (int i = TIEMPO_ESPERA_INICIO; i >= 1; i--) {
-                    System.out.println("Iniciando en " + i + "...");
-                    Thread.sleep(1000);
-                }
-                ctl.comenzarJuego();
-                System.out.println("Juego iniciado. Usa comando 'jugar' para entrar al modo jugador y jugar.");
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }).start();
-    }
-
+  
    private void modoJuego(Map<String, UUID> aliasJugadores) {
     Sala s = ctl.sala();
     if (s == null || s.estado != EstadoSala.JUGANDO) {

@@ -302,7 +302,7 @@ public class Controlador {
         }
     }
 
-    // === Recepción de mensajes del servidor ===
+    // === Recepcion de mensajes del servidor ===
     private void onMensaje(Mensaje m) {
         try {
             switch (m.tipo) {
@@ -314,7 +314,6 @@ public class Controlador {
                 }
                 case CUENTA_ATRAS -> {
                     var cta = (com.mycompany.parchismvc.net.dto.MensajeCuentaAtras) m;
-                    // si quieres, distingue según estado:
                     var s = salaCache;
                     String donde = (s != null && s.estado == com.mycompany.parchismvc.Model.EstadoSala.JUGANDO)
                             ? "Turno" : "Inicio";
@@ -327,7 +326,7 @@ public class Controlador {
                     if (pendingResultado != null && !pendingResultado.isDone()) {
                         pendingResultado.complete(r);
                     }
-                    // opcional: también imprime
+                    // opcional we
                     if (r.ok) {
                         Vista.mostrarInfo(r.mensaje);
                     } else {
@@ -350,15 +349,13 @@ public class Controlador {
                     this.turnoCache = est.turnoDe;
                     Vista.actualizarEstado(salaCache, turnoCache, miId);
 
-                    // (opcional) avisar una vez que ya pueden escribir 'jugar'
                     if (vista != null) {
                         if (est.sala.estado == com.mycompany.parchismvc.Model.EstadoSala.JUGANDO) {
-                            vista.sugerirEntrarModoJuego();
+                            // Muestra la ayuda del modo juego automáticamente al iniciar la partida
+                            vista.mostrarComandosModoJuegoSiHaceFalta();
                         } else {
-                            vista.resetSugerenciaModo();
-                        }
-                        if (vista != null) {
-                            vista.repintarPromptTurno();
+                            // Volvemos a permitir que se muestre la ayuda la próxima vez
+                            vista.resetAyudaModo();
                         }
                     }
 
