@@ -302,6 +302,12 @@ public class Controlador {
         }
     }
 
+    private volatile int segundosRestantes = -1;
+
+    public int getSegundosRestantes() {
+        return segundosRestantes;
+    }
+
     // === Recepcion de mensajes del servidor ===
     private void onMensaje(Mensaje m) {
         try {
@@ -314,11 +320,14 @@ public class Controlador {
                 }
                 case CUENTA_ATRAS -> {
                     var cta = (com.mycompany.parchismvc.net.dto.MensajeCuentaAtras) m;
-                    var s = salaCache;
-                    String donde = (s != null && s.estado == com.mycompany.parchismvc.Model.EstadoSala.JUGANDO)
-                            ? "Turno" : "Inicio";
-                    if (vista != null) {
-                        vista.mostrarInfo(donde + " en " + cta.segundosRestantes + "s…");
+                    if (salaCache != null
+                            && salaCache.estado == com.mycompany.parchismvc.Model.EstadoSala.INICIANDO) {
+
+                        if (vista != null) {
+                            vista.mostrarInfo("Iniciando en " + cta.segundosRestantes + "…");
+                        }
+
+             
                     }
                 }
                 case RESULTADO -> {
