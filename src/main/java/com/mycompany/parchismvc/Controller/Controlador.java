@@ -29,8 +29,8 @@ public class Controlador {
     private com.mycompany.parchismvc.net.Client.ClienteRedMin red;
     private java.util.UUID miId;
     private String salaId;
-    private volatile Sala salaCache;       // último snapshot del servidor
-    private volatile UUID turnoCache;      // último turno reportado
+    private volatile Sala salaCache;       // ultimo snapshot del servidor
+    private volatile UUID turnoCache;      // ultimo turno reportado
 
     public Controlador(ServicioJuego servicio) {
         this.servicio = servicio;
@@ -46,7 +46,7 @@ public class Controlador {
         this.vista = v;
     }
 
-    // Esperas síncronas (para que tu Vista funcione igual que local)
+    // Esperas sincronas (para que tu Vista funcione igual que local)
     private CompletableFuture<MensajeUnido> pendingUnido;
 
     /**
@@ -285,7 +285,7 @@ public class Controlador {
                 Vista.mostrarError(er.razon);
             }
             default -> {
-                /* aún no implementado en el servidor mínimo */ }
+                /* aun no implementado en el servidor minimo */ }
         }
     }
     // === Conectar al servidor ===
@@ -320,6 +320,7 @@ public class Controlador {
                 }
                 case CUENTA_ATRAS -> {
                     var cta = (com.mycompany.parchismvc.net.dto.MensajeCuentaAtras) m;
+                    var s = salaCache;
                     if (salaCache != null
                             && salaCache.estado == com.mycompany.parchismvc.Model.EstadoSala.INICIANDO) {
 
@@ -327,7 +328,13 @@ public class Controlador {
                             vista.mostrarInfo("Iniciando en " + cta.segundosRestantes + "…");
                         }
 
-             
+                    } else {
+                        // Estamos en JUGANDO (timer de turno) no imprimir segun
+                        this.segundosRestantes = cta.segundosRestantes;
+
+                        // esta madre para despues, es para el promp
+                        if (vista != null) {
+                        }
                     }
                 }
                 case RESULTADO -> {
@@ -348,7 +355,6 @@ public class Controlador {
                         pendingDado.complete(d);
                     }
                     if (vista != null) {
-                        vista.repintarPromptTurno();
                     }
 
                 }
@@ -360,11 +366,9 @@ public class Controlador {
 
                     if (vista != null) {
                         if (est.sala.estado == com.mycompany.parchismvc.Model.EstadoSala.JUGANDO) {
-                            // Muestra la ayuda del modo juego automáticamente al iniciar la partida
-                            vista.mostrarComandosModoJuegoSiHaceFalta();
+                            vista.mostrarComandosModoJuegoSiHaceFalta(); 
                         } else {
-                            // Volvemos a permitir que se muestre la ayuda la próxima vez
-                            vista.resetAyudaModo();
+                            vista.resetAyudaModo();                      
                         }
                     }
 

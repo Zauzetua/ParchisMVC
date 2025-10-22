@@ -23,11 +23,11 @@ public class CancelarListoFilter implements Filter {
 
         synchronized (sala.lock){
             String r = sala.servicio.cancelarListo(cmd.jugadorId);
-            // detén la cuenta atrás si estaba corriendo
+            // deten la cuenta atras si estaba corriendo
             if (sala.tareaInicio != null && !sala.tareaInicio.isDone()) sala.tareaInicio.cancel(false);
             if (sala.tareaTick   != null && !sala.tareaTick.isDone())   sala.tareaTick.cancel(false);
             sala.segundosRestantes = 0;
-            // vuelve a ESPERANDO si se había puesto INICIANDO
+            // vuelve a ESPERANDO si se habia puesto INICIANDO
             sala.sala().estado = EstadoSala.ESPERANDO;
 
             ctx.emitToAll(new MensajeResultado(true, r + ". Cuenta atrás cancelada."));

@@ -6,10 +6,10 @@ package com.mycompany.parchismvc.net.dto;
  * Equpo 1 
  */
 public enum TipoMensaje {
-    // conexión
+    // conexion
     UNIRSE, UNIDO, ERROR,
 
-    // lobby / preparación
+    // lobby / preparacion
     ELEGIR_COLOR, LISTO, CANCELAR_LISTO, INICIAR, FORZAR_INICIAR, TIEMPO,
 
     // juego

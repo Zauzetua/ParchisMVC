@@ -42,7 +42,7 @@ public class ListoFilter implements Filter {
                 if (sala.tareaInicio != null && !sala.tareaInicio.isDone()) sala.tareaInicio.cancel(false);
                 if (sala.tareaTick   != null && !sala.tareaTick.isDone())   sala.tareaTick.cancel(false);
 
-                // Inicializa cuenta atrás
+                // Inicializa cuenta atras
                 sala.segundosRestantes = ServicioJuego.TIEMPO_ESPERA_INICIO;
                 sala.broadcast(new MensajeCuentaAtras(sala.segundosRestantes));
 
@@ -56,7 +56,7 @@ public class ListoFilter implements Filter {
                     }
                 }, 1, 1, TimeUnit.SECONDS);
 
-                // Arranque automático al terminar
+                // Arranque automatico al terminar
                 sala.tareaInicio = sala.scheduler.schedule(() -> {
                     synchronized (sala.lock){
                         // detener ticks

@@ -28,7 +28,7 @@ public class Sala implements Serializable {
      */
     public EstadoSala estado = EstadoSala.ESPERANDO;
     /**
-     * Índice del jugador cuyo turno es actualmente
+     * Indice del jugador cuyo turno es actualmente
      */
     public int indiceTurno = 0;
     /**
@@ -36,7 +36,7 @@ public class Sala implements Serializable {
      */
     public int tiempoPorTurno = 30;
     /**
-     * UUID del jugador que ha ganado la partida, o null si no hay ganador aún
+     * UUID del jugador que ha ganado la partida, o null si no hay ganador aun
      */
     public UUID ganador = null;
 }

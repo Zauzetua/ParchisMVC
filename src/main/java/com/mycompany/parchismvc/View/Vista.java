@@ -70,14 +70,14 @@ public class Vista {
     
 
     /**
-     * Inicia la interfaz de línea de comandos.
+     * Inicia la interfaz de linea de comandos.
      * 
      */
 
      
 
     public void iniciar() {
-         // Conexión al servidor (ajustar host/puerto/sala)
+         // Conexion al servidor (ajustar host/puerto/sala)
     ctl.conectarRed("127.0.0.1", 5000, "sala1");
         
         imprimirInstrucciones();
@@ -86,24 +86,30 @@ public class Vista {
 
          while (!salir) {
 
-        // === AUTO-ENTRAR A MODO JUEGO CUANDO EL SERVIDOR ESTE JUGANDO we===
-        try {
+        // === AUTO-ENTRAR A MODO JUEGO CUANDO EL SERVIDOR ESTE JUGANDO WE===
+       try {
             Sala st = ctl.sala();
             if (!enModoJuegoFlag && st != null && st.estado == EstadoSala.JUGANDO) {
                 enModoJuegoFlag = true;
-                try {
-                    modoJuego(aliasJugadores);
-                } finally {
-                    enModoJuegoFlag = false;
-                }
-                continue;
+                try { modoJuego(aliasJugadores, null); } finally { enModoJuegoFlag = false; }
+                continue; // volvemos al menu tras salir del modo
             }
         } catch (Exception ignored) {}
+
 
         System.out.print("> ");
         String linea = sc.nextLine().trim();
         if (linea.isEmpty()) {
             continue;
+        }
+        Sala stNow = ctl.sala();
+        if (stNow != null && stNow.estado == EstadoSala.JUGANDO) {
+            String lower = linea.toLowerCase(Locale.ROOT);
+            if (lower.startsWith("tirar") || lower.startsWith("mover") || lower.equals("estado")) {
+                enModoJuegoFlag = true;
+                try { modoJuego(aliasJugadores, linea); } finally { enModoJuegoFlag = false; }
+                continue;
+            }
         }
         String[] partes = linea.split("\\s+");
         String cmd = partes[0].toLowerCase(Locale.ROOT);
@@ -148,7 +154,7 @@ public class Vista {
                     }
                     UUID id = aliasJugadores.get(partes[1]);
                     if (id == null) { System.out.println("Jugador no registrado"); break; }
-                    // El servidor se encarga de la cuenta atrás e inicio automático
+                    // El servidor se encarga de la cuenta atras e inicio automatico
                     System.out.println(ctl.listo(id));
                 }
 
@@ -168,12 +174,12 @@ public class Vista {
                         break;
                     }
                     int seg = Integer.parseInt(partes[1]);
-                    ctl.setTiempo(seg); // el servidor lo difundirá por ESTADO/RESULTADO
+                    ctl.setTiempo(seg); // el servidor lo difundira por ESTADO/RESULTADO
                     System.out.println("Tiempo por turno ajustado a " + seg + "s");
                 }
 
                 case "iniciar" -> {
-                    // Solicita el inicio si todos están listos; el servidor hará cuenta atrás y empezar
+                    // Solicita el inicio si todos estan listos; el servidor hara cuenta atras y empezar
                     System.out.println(ctl.iniciarSiListos());
                 }
 
@@ -181,7 +187,6 @@ public class Vista {
 
                 case "jugar" -> {
                     // Plan b si no jala alv
-                    modoJuego(aliasJugadores);
                 }
 
                 case "salir" -> salir = true;
@@ -198,22 +203,30 @@ public class Vista {
     System.out.println("Saliendo...");
 }
 
+    
     /*
     Calando imprimir instrucciones para jugar alv
     */
     public void mostrarComandosModoJuegoSiHaceFalta() {
-    if (ayudaModoMostrada) return;
+  if (ayudaModoMostrada) return;
+    imprimirAyudaModo();
+    ayudaModoMostrada = true;
+}
+    
+    private void imprimirAyudaModo() {
     System.out.println("Modo juego interactivo:");
     System.out.println("  tirar <nombre>");
     System.out.println("  mover <nombre> <indiceFicha>");
     System.out.println("  estado");
     System.out.println("  salirmodo");
-    ayudaModoMostrada = true;
 }
     
     public void resetAyudaModo(){
         ayudaModoMostrada = false; 
     }
+    
+   
+    
     
     /**
      * Imprime las instrucciones de uso.
@@ -233,15 +246,20 @@ public class Vista {
     }
 
     /**
-     * Inicia una cuenta regresiva y comienza el juego si la sala está en estado
+     * Inicia una cuenta regresiva y comienza el juego si la sala esta en estado
      * INICIANDO.
      */
   
-   private void modoJuego(Map<String, UUID> aliasJugadores) {
+   private void modoJuego(Map<String, UUID> aliasJugadores, String primeraLinea) {
     Sala s = ctl.sala();
     if (s == null || s.estado != EstadoSala.JUGANDO) {
         System.out.println("El juego no ha iniciado aún.");
         return;
+    }
+    
+     if (!ayudaModoMostrada) {        // <--- evita el doble "Modo juego..."
+        imprimirAyudaModo();
+        ayudaModoMostrada = true;
     }
 
     System.out.println("Modo juego interactivo:");
@@ -250,43 +268,52 @@ public class Vista {
     System.out.println("  estado");
     System.out.println("  salirmodo");
 
-    enModoJuegoFlag = true;                 // <<-- ENTRA EN MODO
+    enModoJuegoFlag = true;
     try {
+    String linea = primeraLinea; // <- arrancamos con la que ya tecleo el usuario
         boolean modo = true;
+
         while (modo) {
             Jugador turnoJugador = ctl.sala().jugadores.get(ctl.sala().indiceTurno);
-            System.out.print("[Turno: " + turnoJugador.nombre + "] > ");
+            if (linea == null) {
+                System.out.print("[Turno: " + turnoJugador.nombre + "] > ");
+                linea = sc.nextLine();
+            }
+            if (linea == null) continue;
 
-            // SIN timeout: bloqueante, no devuelve null
-            String linea = sc.nextLine();
-            if (linea == null) continue;    // por seguridad, pero nextLine() no devuelve null normalmente
+            // Aceptar "<nombre> <comando>" y reordenar si aplica
             String[] partes = linea.trim().split("\\s+");
-            if (partes.length == 0 || partes[0].isEmpty()) continue;
+            if (partes.length == 0 || partes[0].isEmpty()) { linea = null; continue; }
+            Map<String, UUID> aliasJugadoresLower = new HashMap<>();
+            for (var e : aliasJugadores.entrySet()) aliasJugadoresLower.put(e.getKey().toLowerCase(Locale.ROOT), e.getValue());
+            if (partes.length == 2 && aliasJugadoresLower.containsKey(partes[0].toLowerCase(Locale.ROOT))) {
+                String nombre = partes[0];
+                String comando = partes[1].toLowerCase(Locale.ROOT);
+                partes = new String[]{ comando, nombre };
+            }
 
             String cmd = partes[0].toLowerCase(Locale.ROOT);
             try {
                 switch (cmd) {
-                    case "tirar": {
+                    case "tirar" -> {
                         if (partes.length < 2) { System.out.println("Uso: tirar <nombre>"); break; }
-                        UUID id = aliasJugadores.get(partes[1]);
+                        UUID id = aliasJugadoresLower.get(partes[1].toLowerCase(Locale.ROOT));
                         if (id == null) { System.out.println("Jugador no registrado"); break; }
                         if (!turnoJugador.id.equals(id)) { System.out.println("No es tu turno"); break; }
-
-                        int v = ctl.tirar(id);       // en red: envía TirarDadoCmd
+                        int v = ctl.tirar(id);
                         if (v == 0) System.out.println("No es tu turno o ya tiraste.");
                         else System.out.println("Resultado del dado: " + v + (v == 6 ? " (¡6! turno extra si mueves)" : ""));
-                        break;
                     }
-                    case "mover": {
+                    case "mover" -> {
                         if (partes.length < 3) { System.out.println("Uso: mover <nombre> <indiceFicha>"); break; }
-                        UUID id = aliasJugadores.get(partes[1]);
+                        UUID id = aliasJugadoresLower.get(partes[1].toLowerCase(Locale.ROOT));
                         if (id == null) { System.out.println("Jugador no registrado"); break; }
                         if (!turnoJugador.id.equals(id)) { System.out.println("No es tu turno"); break; }
-
-                        int idx = Integer.parseInt(partes[2]);
-                        String res = ctl.mover(id, idx);   // en red: envía MoverCmd
+                        int idx;
+                        try { idx = Integer.parseInt(partes[2]); }
+                        catch (NumberFormatException e) { System.out.println("Indice invalido"); break; }
+                        String res = ctl.mover(id, idx);
                         System.out.println(res);
-
                         if (ctl.sala().estado == EstadoSala.FINALIZADA) {
                             String ganador = ctl.sala().jugadores.stream()
                                     .filter(j -> j.id.equals(ctl.sala().ganador))
@@ -294,23 +321,20 @@ public class Vista {
                             System.out.println("Juego finalizado. Ganador: " + ganador);
                             modo = false;
                         }
-                        break;
                     }
-                    case "estado":
-                        System.out.println(ctl.estado());
-                        break;
-                    case "salirmodo":
-                        modo = false;
-                        break;
-                    default:
-                        System.out.println("Comando de modo juego no reconocido.");
+                    case "estado" -> System.out.println(ctl.estado());
+                    case "salirmodo" -> modo = false;
+                    default -> System.out.println("Comando de modo juego no reconocido.");
                 }
             } catch (Exception ex) {
                 System.out.println("Error: " + ex.getMessage());
             }
+
+            linea = null; // a partir de aqui leemos normalmente del teclado
         }
     } finally {
-        enModoJuegoFlag = false;            // <<-- SALE DE MODO
+        enModoJuegoFlag = false;
+        System.out.println("(Has salido del modo juego. Vuelves al menú.)");
     }
 }
 
@@ -337,14 +361,14 @@ public void mostrarChat(String txt) {
 public void mostrarDado(UUID jugadorId, int valor) {
     System.out.println("[DADO] Jugador " + jugadorId + " sacó: " + valor);
 }
-/** Render rápido del snapshot que envía el servidor */
+/** Render rapido del snapshot que envia el servidor */
 public static void actualizarEstado(Sala sala, UUID turnoDe, UUID miId) {
     if (sala == null) { System.out.println("[ESTADO] (sin sala)"); return; }
     System.out.println("======= ESTADO DE SALA =======");
     System.out.println("Estado: " + sala.estado + " | Tiempo por turno: " + sala.tiempoPorTurno + "s");
     System.out.println("Jugadores (" + sala.jugadores.size() + "):");
     for (var j : sala.jugadores) {
-        String soy = (miId != null && miId.equals(j.id)) ? " <— YO" : "";
+        String soy = (miId != null && miId.equals(j.id)) ? " <- YO" : "";
         String turno = (turnoDe != null && turnoDe.equals(j.id)) ? " [EN TURNO]" : "";
         String listo = j.listo ? " [LISTO]" : "";
         String color = (j.color == null) ? "sin color" : j.color.name();

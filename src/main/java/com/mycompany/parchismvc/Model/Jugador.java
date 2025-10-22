@@ -32,11 +32,11 @@ public class Jugador implements Serializable{
      */
     public ColorJugador color = null;
     /**
-     * Indica si el jugador está listo para iniciar la partida.
+     * Indica si el jugador esta listo para iniciar la partida.
      */
     public boolean listo = false;
     /**
-     * Indica si el jugador está conectado.
+     * Indica si el jugador esta conectado.
      */
     public boolean conectado = true;
 
@@ -51,7 +51,7 @@ public class Jugador implements Serializable{
     }
 
     /**
-     * Representación en cadena del jugador.
+     * Representacion en cadena del jugador.
      * @return Cadena con el nombre, color y estado de listo del jugador.
      */
     @Override

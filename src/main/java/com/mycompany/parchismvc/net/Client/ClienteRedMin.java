@@ -11,9 +11,9 @@ import java.net.Socket;
 import java.util.function.Consumer;
 
 /**
- * Cliente de red mínimo:
+ * Cliente de red minimo:
  * - conecta al servidor (host/puerto)
- * - envía Mensaje
+ * - envia Mensaje
  * - recibe Mensaje y dispara callback
  */
 public class ClienteRedMin implements Closeable {

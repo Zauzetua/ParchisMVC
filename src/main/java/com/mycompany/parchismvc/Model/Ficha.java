@@ -24,8 +24,8 @@ public class Ficha implements Serializable {
      */
     public final UUID dueñoId;
     /**
-     * Posición actual de la ficha en el tablero. -1 indica que está en la base.
-     * 0-68 indica la posición en el tablero.
+    * Posicion actual de la ficha en el tablero. -1 indica que esta en la base.
+    * 0-68 indica la posicion en el tablero.
      */
     public int posicion = -1; // -1 = base; >=0 posicion absoluta
     /**

@@ -23,7 +23,7 @@ public class MoverFilter implements Filter {
         String r = sala.servicio.moverFicha(cmd.jugadorId, cmd.indiceFicha);
         ctx.emitToAll(new MensajeResultado(!r.toLowerCase().contains("no"), r));
         ctx.markMutated();
-        // si cambió el turno, reinicia el reloj
+    // si cambio el turno, reinicia el reloj
         sala.reiniciarRelojTurnoSiCambio(turnoAntes);
         }
     }

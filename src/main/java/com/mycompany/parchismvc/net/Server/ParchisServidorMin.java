@@ -29,10 +29,10 @@ import java.util.*;
 import java.util.concurrent.*;
 
 /**
- * Servidor mínimo: - Acepta clientes - Maneja UNIRSE - Responde UNIDO y ESTADO
+ * Servidor minimo: - Acepta clientes - Maneja UNIRSE - Responde UNIDO y ESTADO
  * (snapshot de Sala)
  *
- * Más adelante añadimos colores, listo, tirar dado y mover.
+ * Mas adelante anadimos colores, listo, tirar dado y mover.
  */
 public class ParchisServidorMin {
 
@@ -175,7 +175,6 @@ public class ParchisServidorMin {
                         TipoMensaje.TIEMPO, new SetTiempoFilter(),
                         TipoMensaje.TIRAR_DADO, new TirarDadoFilter(),
                         TipoMensaje.MOVER, new MoverFilter()
-                // Aquí puedes añadir: ELEGIR_COLOR, LISTO, INICIAR, etc.
                 )),
                 // Si algún filtro marcó mutación del estado -> emitir snapshot
                 new EmitEstadoFilter(),

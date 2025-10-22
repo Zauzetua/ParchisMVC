@@ -9,16 +9,15 @@ import com.mycompany.parchismvc.View.Vista;
 
 /**
  *
- * @author PC SWAN PLUS
+ * @author Equpo 1
  */
 public class MainCliente {
     public static void main(String[] args) {
-        // Controlador en modo RED (sin ServicioJuego local)
-        Controlador ctl = new Controlador();  // <-- ctor vacío
-        Vista vista = new Vista(ctl);         // tu vista de consola
-        ctl.setVista(vista);                  // enlaza vista ↔ controlador
+        // Controlador en modo RED 
+        Controlador ctl = new Controlador();  
+        Vista vista = new Vista(ctl);         
+        ctl.setVista(vista);                  
 
-        // Conéctate al servidor de sockets (ajusta host/puerto/sala si hace falta)
         ctl.conectarRed("127.0.0.1", 5000, "sala1");
 
         System.out.println("PARCHIS - Cliente (sockets)");
