@@ -8,6 +8,7 @@ import com.mycompany.parchismvc.Service.ServicioJuego;
 import com.mycompany.parchismvc.net.dto.*;
 import com.mycompany.parchismvc.net.filters.BroadcastFilter;
 import com.mycompany.parchismvc.net.filters.CancelarListoFilter;
+import com.mycompany.parchismvc.net.filters.DispatchFilter;
 import com.mycompany.parchismvc.net.filters.ElegirColorFilter;
 import com.mycompany.parchismvc.net.filters.EmitEstadoFilter;
 import com.mycompany.parchismvc.net.filters.IniciarFilter;
@@ -19,7 +20,11 @@ import com.mycompany.parchismvc.net.filters.RouterFilter;
 import com.mycompany.parchismvc.net.filters.SalaBindingFilter;
 import com.mycompany.parchismvc.net.filters.SetTiempoFilter;
 import com.mycompany.parchismvc.net.filters.TirarDadoFilter;
+import com.mycompany.parchismvc.net.wire.Codec;
+import com.mycompany.parchismvc.net.wire.Codecs;
 import com.mycompany.parchismvc.pf.Ctx;
+import com.mycompany.parchismvc.pf.Dispatcher;
+import com.mycompany.parchismvc.pf.MapDispatcher;
 import com.mycompany.parchismvc.pf.Pipeline;
 
 import java.io.*;
@@ -155,81 +160,74 @@ public class ParchisServidorMin {
     public class SesionCliente implements Runnable {
 
         private final Socket socket;
+        private BufferedInputStream bin;
+        private OutputStream bout;
+        private Codec codec;
         private ObjectOutputStream out;
         private ObjectInputStream in;
         public SalaActiva sala;
         public Jugador yo;
-
-        // --------- Pipeline (pipes & filters) ----------
-        private final Pipeline pipeline = Pipeline.of(
-                new LogFilter(),
-                // Resuelve sala en el contexto: si es UNIRSE usa el id del mensaje; si no, la ya asignada a la sesión
-                new SalaBindingFilter(ParchisServidorMin.this::sala),
-                // Enrutamiento a filtros por tipo de mensaje
-                new RouterFilter(Map.of(
-                        TipoMensaje.UNIRSE, new JoinFilter(),
-                        TipoMensaje.ELEGIR_COLOR, new ElegirColorFilter(),
-                        TipoMensaje.LISTO, new ListoFilter(),
-                        TipoMensaje.CANCELAR_LISTO, new CancelarListoFilter(),
-                        TipoMensaje.INICIAR, new IniciarFilter(),
-                        TipoMensaje.TIEMPO, new SetTiempoFilter(),
-                        TipoMensaje.TIRAR_DADO, new TirarDadoFilter(),
-                        TipoMensaje.MOVER, new MoverFilter()
-                )),
-                // Si algún filtro marcó mutación del estado -> emitir snapshot
-                new EmitEstadoFilter(),
-                // Finalmente, enviar acumulados a emisor y a todos
-                new BroadcastFilter()
-        );
+        
+         // Pipeline (con Dispatcher)
+        private final Pipeline pipeline;
 
         public SesionCliente(Socket socket) {
             this.socket = socket;
+
+            // Dispatcher (tabla de rutas TipoMensaje -> filtro de dominio)
+            Dispatcher dispatcher = new MapDispatcher(Map.of(
+                TipoMensaje.UNIRSE,         new JoinFilter(),
+                TipoMensaje.ELEGIR_COLOR,   new ElegirColorFilter(),
+                TipoMensaje.LISTO,          new ListoFilter(),
+                TipoMensaje.CANCELAR_LISTO, new CancelarListoFilter(),
+                TipoMensaje.INICIAR,        new IniciarFilter(),
+                TipoMensaje.TIEMPO,         new SetTiempoFilter(),
+                TipoMensaje.TIRAR_DADO,     new TirarDadoFilter(),
+                TipoMensaje.MOVER,          new MoverFilter()
+            ));
+
+            this.pipeline = Pipeline.of(
+                new LogFilter(),
+                new SalaBindingFilter(ParchisServidorMin.this::sala),
+                new DispatchFilter(dispatcher),   // <— reemplaza a RouterFilter
+                new EmitEstadoFilter(),
+                new BroadcastFilter()
+            );
         }
 
-        public SalaActiva getSala() {
-            return sala;
-        }
-
-        public void setSala(SalaActiva sala) {
-            this.sala = sala;
-        }
-
-        public Jugador getYo() {
-            return yo;
-        }
-
-        public void setYo(Jugador yo) {
-            this.yo = yo;
-        }
+        public SalaActiva getSala() { return sala; }
+        public void setSala(SalaActiva sala) { this.sala = sala; }
+        public Jugador getYo() { return yo; }
+        public void setYo(Jugador yo) { this.yo = yo; }
 
         @Override
         public void run() {
             try (socket) {
-                out = new ObjectOutputStream(socket.getOutputStream());
-                in = new ObjectInputStream(socket.getInputStream());
-                System.out.println("[SERVIDOR] Cliente conectado: " + socket.getRemoteSocketAddress());
+                // Detectar codec por sesión (Java serialization o JSON enmarcado)
+                this.bin  = new BufferedInputStream(socket.getInputStream());
+                this.bout = socket.getOutputStream();
+                this.codec = Codecs.detectar(bin, bout);
+                System.out.println("[SERVIDOR] Cliente conectado: " + socket.getRemoteSocketAddress()
+                        + " codec=" + codec.nombre());
 
                 while (true) {
-                    Object o = in.readObject();
-                    if (o instanceof Mensaje m) {
-                        Ctx ctx = new Ctx(this, m);
-                        pipeline.run(ctx);
-                    }
+                    Mensaje m = codec.leer(bin);        // bloqueante; lanza EOFException si se cierra
+                    Ctx ctx = new Ctx(this, m);
+                    pipeline.run(ctx);
                 }
+            } catch (EOFException eof) {
+                System.out.println("[SERVIDOR] Cliente cerro conexión: " + socket.getRemoteSocketAddress());
+                if (sala != null) sala.removeCliente(this);
             } catch (Exception e) {
                 System.out.println("[SERVIDOR] Cliente fuera: " + e.getMessage());
-                if (sala != null) {
-                    sala.clientes.remove(this);
-                }
+                if (sala != null) sala.removeCliente(this);
             }
         }
 
         public void enviar(Mensaje m) {
             try {
-                out.reset();
-                out.writeObject(m);
-                out.flush();
-            } catch (IOException ignored) {
+                codec.escribir(bout, m);
+            } catch (Exception ignored) {
             }
         }
 

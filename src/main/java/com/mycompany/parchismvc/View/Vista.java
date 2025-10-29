@@ -240,7 +240,6 @@ public class Vista {
         System.out.println("  cancelar <nombre>              - cancelar listo");
         System.out.println("  iniciar                        - forzar inicio (si hay >=2 jugadores)");
         System.out.println("  estado                         - mostrar estado de la sala");
-        System.out.println("  jugar                          - entrar al modo juego (solo si ya inició)");
         System.out.println("  salir                          - salir del programa");
         System.out.println("");
     }
@@ -253,7 +252,7 @@ public class Vista {
    private void modoJuego(Map<String, UUID> aliasJugadores, String primeraLinea) {
     Sala s = ctl.sala();
     if (s == null || s.estado != EstadoSala.JUGANDO) {
-        System.out.println("El juego no ha iniciado aún.");
+        System.out.println("El juego no ha iniciado aun.");
         return;
     }
     
@@ -334,7 +333,7 @@ public class Vista {
         }
     } finally {
         enModoJuegoFlag = false;
-        System.out.println("(Has salido del modo juego. Vuelves al menú.)");
+        System.out.println("(Has salido del modo juego. Vuelves al menu.)");
     }
 }
 
@@ -359,7 +358,7 @@ public void mostrarChat(String txt) {
     System.out.println("[CHAT] " + txt);
 }
 public void mostrarDado(UUID jugadorId, int valor) {
-    System.out.println("[DADO] Jugador " + jugadorId + " sacó: " + valor);
+    System.out.println("[DADO] Jugador " + jugadorId + " saco: " + valor);
 }
 /** Render rapido del snapshot que envia el servidor */
 public static void actualizarEstado(Sala sala, UUID turnoDe, UUID miId) {
