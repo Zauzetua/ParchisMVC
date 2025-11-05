@@ -34,7 +34,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 /**
- * Servidor minimo: - Acepta clientes - Maneja UNIRSE - Responde UNIDO y ESTADO
+ * Servidor: - Acepta clientes - Maneja UNIRSE - Responde UNIDO y ESTADO
  * (snapshot de Sala)
  *
  * Mas adelante anadimos colores, listo, tirar dado y mover.
@@ -61,7 +61,7 @@ public class ParchisServidorMin {
         }
     }
 
-    // ====== Obtiene/crea sala por id======
+    //Obtiene/crea sala por id
     public SalaActiva sala(String idSala) {
         return salas.computeIfAbsent(idSala, SalaActiva::new);
     }

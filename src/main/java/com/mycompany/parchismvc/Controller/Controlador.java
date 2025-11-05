@@ -81,7 +81,7 @@ public class Controlador {
      *
      * @param jugadorId ID del jugador.
      * @param color Color elegido por el jugador.
-     * @return Mensaje indicando el resultado de la operación.
+     * @return Mensaje indicando el resultado de la operacion.
      */
     public String elegirColor(UUID jugadorId, ColorJugador color) {
         if (servicio != null) {
@@ -121,7 +121,7 @@ public class Controlador {
      * Cancela el estado de listo de un jugador.
      *
      * @param jugadorId ID del jugador.
-     * @return Mensaje indicando el resultado de la operación.
+     * @return Mensaje indicando el resultado de la operacion.
      */
     public String cancelar(UUID jugadorId) {
         if (servicio != null) {
@@ -140,7 +140,7 @@ public class Controlador {
     /**
      * Inicia el juego si todos los jugadores están listos.
      *
-     * @return Mensaje indicando el resultado de la operación.
+     * @return Mensaje indicando el resultado de la operacion.
      */
     public String iniciarSiListos() {
         if (servicio != null) {
@@ -159,7 +159,7 @@ public class Controlador {
     /**
      * Forza el inicio del juego independientemente del estado de los jugadores.
      *
-     * @return Mensaje indicando el resultado de la operación.
+     * @return Mensaje indicando el resultado de la operacion.
      */
     public String forzarIniciar() {
         return servicio.forzarIniciar();
@@ -198,7 +198,7 @@ public class Controlador {
      *
      * @param jugadorId ID del jugador.
      * @param indiceFicha Índice de la ficha a mover.
-     * @return Mensaje indicando el resultado de la operación.
+     * @return Mensaje indicando el resultado de la operacion.
      */
     public String mover(UUID jugadorId, int indiceFicha) {
         if (servicio != null) {
