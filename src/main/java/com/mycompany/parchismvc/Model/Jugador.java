@@ -1,5 +1,6 @@
 package com.mycompany.parchismvc.Model;
 
+import java.io.Serializable;
 import java.util.UUID;
 
 /**
@@ -7,7 +8,13 @@ import java.util.UUID;
  * @author Equipo 1 Parchis
   * Clase que representa a un jugador en el juego.
  */
-public class Jugador {
+/*
+Sockets
+*/
+public class Jugador implements Serializable{
+    
+    
+    private static final long serialVersionUID = 1L;
     /**
      * Identificador unico del jugador.
      */
@@ -25,11 +32,11 @@ public class Jugador {
      */
     public ColorJugador color = null;
     /**
-     * Indica si el jugador está listo para iniciar la partida.
+     * Indica si el jugador esta listo para iniciar la partida.
      */
     public boolean listo = false;
     /**
-     * Indica si el jugador está conectado.
+     * Indica si el jugador esta conectado.
      */
     public boolean conectado = true;
 
@@ -44,7 +51,7 @@ public class Jugador {
     }
 
     /**
-     * Representación en cadena del jugador.
+     * Representacion en cadena del jugador.
      * @return Cadena con el nombre, color y estado de listo del jugador.
      */
     @Override

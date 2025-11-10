@@ -1,5 +1,6 @@
 package com.mycompany.parchismvc.Model;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -10,7 +11,8 @@ import java.util.UUID;
  *
  * @author Equipo 1 Parchis
  */
-public class Sala {
+public class Sala implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     /**
      * Lista de jugadores en la sala
@@ -26,7 +28,7 @@ public class Sala {
      */
     public EstadoSala estado = EstadoSala.ESPERANDO;
     /**
-     * Índice del jugador cuyo turno es actualmente
+     * Indice del jugador cuyo turno es actualmente
      */
     public int indiceTurno = 0;
     /**
@@ -34,7 +36,7 @@ public class Sala {
      */
     public int tiempoPorTurno = 30;
     /**
-     * UUID del jugador que ha ganado la partida, o null si no hay ganador aún
+     * UUID del jugador que ha ganado la partida, o null si no hay ganador aun
      */
     public UUID ganador = null;
 }

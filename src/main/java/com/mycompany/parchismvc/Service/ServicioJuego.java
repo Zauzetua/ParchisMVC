@@ -26,16 +26,16 @@ public class ServicioJuego {
      */
     public static final int TAM_TABLERO = 52;
     /**
-     * Número de fichas por jugador
+     * Numero de fichas por jugador
      */
     public static final int FICHAS_POR_JUGADOR = 4;
     /**
-     * Tiempo de espera (en segundos) para iniciar el juego una vez todos están
+     * Tiempo de espera (en segundos) para iniciar el juego una vez todos estan
      * listos
      */
     public static final int TIEMPO_ESPERA_INICIO = 10;
     /**
-     * Número minimo de jugadores para iniciar el juego
+     * Numero minimo de jugadores para iniciar el juego
      */
     public static final int MIN_JUGADORES = 2;
 
@@ -158,9 +158,9 @@ public class ServicioJuego {
     }
 
     /**
-     * Comprueba si todos los jugadores están listos y hay al menos el minimo
+     * Comprueba si todos los jugadores estan listos y hay al menos el minimo
      * 
-     * @return true si todos están listos y hay al menos el mínimo, false en caso
+     * @return true si todos estan listos y hay al menos el minimo, false en caso
      *         contrario
      */
     public boolean todosListosMinimos() {
@@ -170,7 +170,7 @@ public class ServicioJuego {
     }
 
     /**
-     * Inicia el juego si todos están listos y hay al menos el mínimo
+     * Inicia el juego si todos estan listos y hay al menos el minimo
      * 
      * @return El mensaje de confirmacion o error
      */
@@ -209,6 +209,8 @@ public class ServicioJuego {
         ultimoValorTirado.clear();
         tieneTurnoExtra.clear();
         s.ganador = null;
+        
+        for (Jugador j : sala().jugadores) j.listo = false;
     }
 
     /**
@@ -260,7 +262,7 @@ public class ServicioJuego {
      * 
      * @param jugadorId   ID del jugador que mueve la ficha
      * @param indiceFicha Indice de la ficha a mover
-     * @return Mensaje de resultado de la acción
+     * @return Mensaje de resultado de la accion
      */
     public String moverFicha(UUID jugadorId, int indiceFicha) {
         Sala s = sala();
@@ -404,12 +406,12 @@ public class ServicioJuego {
     }
 
     /**
-     * Comprueba si una posición del tablero esta bloqueada por un rival (2 o más
+     * Comprueba si una posicion del tablero esta bloqueada por un rival (2 o mas
      * fichas)
      * 
      * @param modulo Posicion en el tablero (0-51)
      * @param miId   ID del jugador que verifica
-     * @return true si la posicion está bloqueada por un rival, false en caso
+     * @return true si la posicion esta bloqueada por un rival, false en caso
      *         contrario
      */
     private boolean posicionBloqueadaPorRival(int modulo, UUID miId) {
@@ -488,6 +490,16 @@ public class ServicioJuego {
         sb.append("=========================\n");
         return sb.toString();
     }
+    
+    
+    public void pasarTurnoPorTiempo() {
+    Jugador actual = jugadorActual();
+    if (actual == null) return;
+    // si habia un valor de dado pendiente, lo descartamos
+    ultimoValorTirado.remove(actual.id);
+    tieneTurnoExtra.put(actual.id, false);
+    avanzarTurno(); // metodo privado de la misma clase
+}
 
     /**
      * Obtiene el tiempo por turno en segundos
