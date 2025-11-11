@@ -4,72 +4,96 @@
  */
 package com.mycompany.parchismvc.View;
 
-import com.mycompany.parchismvc.View.UtilsFront.ImageBackgroundPanel;
+import com.mycompany.parchismvc.View.UtilsFront.AvatarButton;
+import com.mycompany.parchismvc.View.UtilsFront.CircularImageLabel;
+// import com.mycompany.parchismvc.View.UtilsFront.ImageBackgroundPanel; // Ya no se usa directamente en esta clase
+import java.awt.GridLayout;
+import javax.swing.ButtonGroup;
 
 /**
  *
  * @author galle
  */
 public class RegistroJF extends javax.swing.JFrame {
-
-    /**
-     * Creates new form RegistroJF
-     */
+    
+    private final ButtonGroup grupoAvatares = new ButtonGroup();
+    private String avatarSeleccionado = null;
+    private CircularImageLabel previewAvatar;
+    
     public RegistroJF() {
+        // Crear el preview ANTES de initComponents, porque el GroupLayout lo usa dentro
+        previewAvatar = new CircularImageLabel(140);
         initComponents();
-        //instalarFondos();
+        configurarAvatares();
     }
- private void instalarFondos() {
-         // NUEVOS paneles con imagen
-        ImageBackgroundPanel nuevoFondo = new ImageBackgroundPanel("/Assets/Fondo.png");
-        ImageBackgroundPanel nuevoRegistro = new ImageBackgroundPanel("/Assets/RegistroFondo.png");
+  
+    // Método ya no requerido para crear el preview; se deja por si quieres ajustar propiedades luego
+    private void configurarPreview(){
+        // previewAvatar ya está creado en el constructor antes de initComponents()
+    }
+  private void configurarAvatares() {
+        // jPanel1 es el panel “Avatares” (contenedor en tu diseño)
+    AvataresPanel.removeAll();
+    AvataresPanel.setOpaque(false);
+    AvataresPanel.setLayout(new GridLayout(2, 2, 20, 20)); // 4 avatares, espacio 20px
 
-        // Copiar layout y componentes del RegistroPanel original
-        nuevoRegistro.setLayout(RegistroPanel.getLayout());
-        for (java.awt.Component c : RegistroPanel.getComponents()) {
-            nuevoRegistro.add(c);
+        // Define opciones (id que guardarás y ruta del recurso)
+        // NOTA: Los archivos reales en resources son image_1.png ... image_4.png (sin 'n').
+        // Se usan ids lógicos (ratita, perrito, mapache, gatito) que podrás mapear en el servidor.
+        Object[][] AVS = new Object[][]{
+            { "ratita",  "/Assets/image_1.png"  },
+            { "perrito", "/Assets/image_2.png"  },
+            { "mapache", "/Assets/image_3.png"  },
+            { "gatito",  "/Assets/image_4.png"  },
+        };
+
+        for (Object[] av : AVS) {
+            String id = (String) av[0];
+            String path = (String) av[1];
+
+            AvatarButton b = new AvatarButton(id, path, 96);
+            b.addActionListener(e -> {
+                avatarSeleccionado = e.getActionCommand();
+                previewAvatar.setResourcePath(path);
+            });
+            grupoAvatares.add(b);
+            AvataresPanel.add(b);
         }
-        // Ajustar tamaño preferido si lo necesitas
-        nuevoRegistro.setPreferredSize(RegistroPanel.getPreferredSize());
 
-        // Construir layout del fondo igual que el original FondoPanel
-        javax.swing.GroupLayout fondoLayout = new javax.swing.GroupLayout(nuevoFondo);
-        nuevoFondo.setLayout(fondoLayout);
-        fondoLayout.setHorizontalGroup(
-            fondoLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                .addGroup(fondoLayout.createSequentialGroup()
-                    .addGap(191, 191, 191)
-                    .addComponent(nuevoRegistro, javax.swing.GroupLayout.PREFERRED_SIZE,
-                            javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addContainerGap(244, Short.MAX_VALUE))
-        );
-        fondoLayout.setVerticalGroup(
-            fondoLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, fondoLayout.createSequentialGroup()
-                    .addContainerGap(119, Short.MAX_VALUE)
-                    .addComponent(nuevoRegistro, javax.swing.GroupLayout.PREFERRED_SIZE,
-                            javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGap(90, 90, 90))
-        );
+        // Selección por defecto
+        if (grupoAvatares.getElements().hasMoreElements()) {
+            var it = grupoAvatares.getElements();
+            if(it.hasMoreElements()){
+                var first = it.nextElement();
+                first.setSelected(true);
+                avatarSeleccionado = first.getActionCommand();
+                // path del primero
+                previewAvatar.setResourcePath((String) AVS[0][1]);
+            }
+        }
 
-        // Reemplazar referencias
-        this.FondoPanel = nuevoFondo;
-        this.RegistroPanel = nuevoRegistro;
-
-        // Reemplazar el content pane
-        setContentPane(nuevoFondo);
-        setPreferredSize(new java.awt.Dimension(1280, 725));
-        pack();
-        setLocationRelativeTo(null);
+        // (Preview ya se coloca en UnirsePanel, no dentro de AvataresPanel)
+        AvataresPanel.revalidate();
+        AvataresPanel.repaint();
+        
     }
-    @SuppressWarnings("unchecked")
+
+    // Llama a esto cuando presiones “JUGAR” para saber qué avatar enviar al servidor
+    public String getAvatarSeleccionado() {
+        return avatarSeleccionado; // ej. "shoco"
+    }
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
         FondoPanel = new com.mycompany.parchismvc.View.UtilsFront.FondoBGPanel();
         RegistroPanel = new com.mycompany.parchismvc.View.UtilsFront.RegistroBGPanel();
-        btnComoJugar = new javax.swing.JButton();
         jLabel1 = new javax.swing.JLabel();
+        UnirsePanel = new com.mycompany.parchismvc.View.UtilsFront.UnirseBGPanel();
+        jButton1 = new javax.swing.JButton();
+        jTextField1 = new javax.swing.JTextField();
+        jLabel2 = new javax.swing.JLabel();
+        AvataresPanel = new javax.swing.JPanel();
+        jButton2 = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -77,49 +101,105 @@ public class RegistroJF extends javax.swing.JFrame {
 
         RegistroPanel.setRequestFocusEnabled(false);
 
-        btnComoJugar.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Assets/parchis_icon 1.png"))); // NOI18N
-
+        jLabel1.setFont(new java.awt.Font("Showcard Gothic", 0, 18)); // NOI18N
+        jLabel1.setForeground(new java.awt.Color(255, 255, 255));
         jLabel1.setText("Como Jugar");
+
+        UnirsePanel.setBackground(new java.awt.Color(0, 102, 102));
+
+        jButton1.setText("Unirse");
+
+        javax.swing.GroupLayout UnirsePanelLayout = new javax.swing.GroupLayout(UnirsePanel);
+        UnirsePanel.setLayout(UnirsePanelLayout);
+        UnirsePanelLayout.setHorizontalGroup(
+            UnirsePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+            .addGroup(UnirsePanelLayout.createSequentialGroup()
+                .addGap(33, 33, 33)
+                .addGroup(UnirsePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
+                    .addComponent(previewAvatar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, 256, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 217, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(33, Short.MAX_VALUE))
+        );
+        UnirsePanelLayout.setVerticalGroup(
+            UnirsePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(UnirsePanelLayout.createSequentialGroup()
+                .addGap(20, 20, 20)
+                .addComponent(previewAvatar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(25, 25, 25)
+                .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(30, 30, 30)
+                .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 44, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(60, Short.MAX_VALUE))
+        );
+
+        jLabel2.setFont(new java.awt.Font("Showcard Gothic", 0, 48)); // NOI18N
+        jLabel2.setForeground(new java.awt.Color(255, 255, 255));
+        jLabel2.setText("PARCHIS");
+
+        javax.swing.GroupLayout AvataresPanelLayout = new javax.swing.GroupLayout(AvataresPanel);
+        AvataresPanel.setLayout(AvataresPanelLayout);
+        AvataresPanelLayout.setHorizontalGroup(
+            AvataresPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 358, Short.MAX_VALUE)
+        );
+        AvataresPanelLayout.setVerticalGroup(
+            AvataresPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 346, Short.MAX_VALUE)
+        );
+
+        jButton2.setIcon(new javax.swing.ImageIcon(getClass().getResource("/Assets/parchis_icon_1.png"))); // NOI18N
 
         javax.swing.GroupLayout RegistroPanelLayout = new javax.swing.GroupLayout(RegistroPanel);
         RegistroPanel.setLayout(RegistroPanelLayout);
         RegistroPanelLayout.setHorizontalGroup(
             RegistroPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, RegistroPanelLayout.createSequentialGroup()
-                .addContainerGap(693, Short.MAX_VALUE)
-                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 68, javax.swing.GroupLayout.PREFERRED_SIZE)
+            .addGroup(RegistroPanelLayout.createSequentialGroup()
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(jLabel2)
+                .addGap(108, 108, 108)
+                .addComponent(jLabel1)
                 .addGap(18, 18, 18)
-                .addComponent(btnComoJugar, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap())
+                .addComponent(jButton2)
+                .addGap(37, 37, 37))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, RegistroPanelLayout.createSequentialGroup()
+                .addGap(56, 56, 56)
+                .addComponent(AvataresPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 74, Short.MAX_VALUE)
+                .addComponent(UnirsePanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(74, 74, 74))
         );
         RegistroPanelLayout.setVerticalGroup(
             RegistroPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(RegistroPanelLayout.createSequentialGroup()
+                .addGap(30, 30, 30)
                 .addGroup(RegistroPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(RegistroPanelLayout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(btnComoJugar))
-                    .addGroup(RegistroPanelLayout.createSequentialGroup()
-                        .addGap(22, 22, 22)
+                    .addComponent(jButton2)
+                    .addGroup(RegistroPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(jLabel2)
                         .addComponent(jLabel1)))
-                .addContainerGap(443, Short.MAX_VALUE))
+                .addGap(18, 18, 18)
+                .addGroup(RegistroPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(UnirsePanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(AvataresPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(84, Short.MAX_VALUE))
         );
 
         javax.swing.GroupLayout FondoPanelLayout = new javax.swing.GroupLayout(FondoPanel);
         FondoPanel.setLayout(FondoPanelLayout);
         FondoPanelLayout.setHorizontalGroup(
             FondoPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(FondoPanelLayout.createSequentialGroup()
-                .addGap(191, 191, 191)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, FondoPanelLayout.createSequentialGroup()
+                .addContainerGap(187, Short.MAX_VALUE)
                 .addComponent(RegistroPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(244, Short.MAX_VALUE))
+                .addGap(184, 184, 184))
         );
         FondoPanelLayout.setVerticalGroup(
             FondoPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, FondoPanelLayout.createSequentialGroup()
-                .addContainerGap(119, Short.MAX_VALUE)
+                .addContainerGap(76, Short.MAX_VALUE)
                 .addComponent(RegistroPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(90, 90, 90))
+                .addGap(71, 71, 71))
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -130,9 +210,7 @@ public class RegistroJF extends javax.swing.JFrame {
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(FondoPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+            .addComponent(FondoPanel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
 
         pack();
@@ -174,9 +252,14 @@ public class RegistroJF extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JPanel AvataresPanel;
     private javax.swing.JPanel FondoPanel;
     private javax.swing.JPanel RegistroPanel;
-    private javax.swing.JButton btnComoJugar;
+    private javax.swing.JPanel UnirsePanel;
+    private javax.swing.JButton jButton1;
+    private javax.swing.JButton jButton2;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JTextField jTextField1;
     // End of variables declaration//GEN-END:variables
 }
