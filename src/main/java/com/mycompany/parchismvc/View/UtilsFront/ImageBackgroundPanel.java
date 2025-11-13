@@ -27,6 +27,15 @@ public class ImageBackgroundPanel extends JPanel {
         repaint();
     }
 
+  /**
+     * Establece la imagen de fondo para este panel.
+     * @param img La imagen a establecer como fondo.
+     */
+    protected void setImage(BufferedImage img) {
+        this.img = img;
+        repaint(); // Vuelve a dibujar el panel para mostrar la nueva imagen
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);

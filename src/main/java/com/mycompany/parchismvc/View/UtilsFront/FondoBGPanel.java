@@ -6,5 +6,5 @@ package com.mycompany.parchismvc.View.UtilsFront;
 
 
 public class FondoBGPanel extends ImageBackgroundPanel {
-    public FondoBGPanel() { super("/Assets/Fondo.png"); }
+     public FondoBGPanel() { super("/Assets/Fondo.png"); }
 }

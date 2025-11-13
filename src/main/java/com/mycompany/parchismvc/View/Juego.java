@@ -15,6 +15,8 @@ public class Juego extends javax.swing.JFrame {
      */
     public Juego() {
         initComponents();
+        // Centra la ventana en la pantalla
+        setLocationRelativeTo(null);
     }
 
     /**
@@ -27,23 +29,17 @@ public class Juego extends javax.swing.JFrame {
     private void initComponents() {
 
         jPanel1 = new javax.swing.JPanel();
+        JPTablero = new com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setPreferredSize(new java.awt.Dimension(1022, 521));
 
         jPanel1.setBackground(new java.awt.Color(21, 79, 102));
         jPanel1.setPreferredSize(new java.awt.Dimension(1022, 521));
+        jPanel1.setLayout(new java.awt.GridBagLayout());
 
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 1022, Short.MAX_VALUE)
-        );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 522, Short.MAX_VALUE)
-        );
+        JPTablero.setPreferredSize(new java.awt.Dimension(408, 354));
+        jPanel1.add(JPTablero, new java.awt.GridBagConstraints());
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -66,7 +62,7 @@ public class Juego extends javax.swing.JFrame {
         /* Set the Nimbus look and feel */
         //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
         /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
+         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html
          */
         try {
             for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
@@ -95,6 +91,7 @@ public class Juego extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JPanel JPTablero;
     private javax.swing.JPanel jPanel1;
     // End of variables declaration//GEN-END:variables
 }
