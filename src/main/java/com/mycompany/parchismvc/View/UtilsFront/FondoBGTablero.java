@@ -395,10 +395,11 @@ public class FondoBGTablero extends ImageBackgroundPanel {
 
         // Preparamos la acción de mover la ficha principal. Se ejecutará sola o después de una captura.
         Runnable moverFichaPrincipal = () -> {
-            limpiarResaltados();
             mapaPosicionFichas.put(idFichaMovida, idCasillaDestino);
-            animarFicha(origen, destino, null);
+            // Cuando la animación termine, el botón de destino se convertirá en la nueva ficha seleccionada.
+            animarFicha(origen, destino, () -> seleccionarFicha(destino));
         };
+        limpiarResaltados(); // Limpiamos resaltados de víctimas (rojo) antes de la acción.
 
         // Si hay una ficha en el destino (es una captura potencial)
         if (idFichaEnDestino != null) {
@@ -420,7 +421,18 @@ public class FondoBGTablero extends ImageBackgroundPanel {
             moverFichaPrincipal.run();
         }
 
-        botonFichaSeleccionada = null; // Deseleccionamos la ficha para el próximo turno.
+    }
+    
+    /**
+     * Establece un botón de ficha como el seleccionado y le aplica el borde de resaltado.
+     * @param botonFicha El botón a seleccionar.
+     */
+    private void seleccionarFicha(JButton botonFicha) {
+        limpiarResaltados(); // Limpia cualquier selección anterior.
+        botonFichaSeleccionada = botonFicha;
+        botonFichaSeleccionada.setBorder(javax.swing.BorderFactory.createLineBorder(Color.CYAN, 3));
+        botonFichaSeleccionada.setBorderPainted(true);
+        resaltarVictimas(); // Muestra posibles víctimas para la nueva selección.
     }
 
     /**
@@ -532,11 +544,11 @@ public class FondoBGTablero extends ImageBackgroundPanel {
      * Limpia todos los resaltados de selección (cian) y de víctima (rojo).
      */
     private void limpiarResaltados() {
+        // Quitamos el borde a todas las casillas
         for (JButton boton : botonesCasillas.values()) {
-            boton.setBorderPainted(false);
-        }
-        if (botonFichaSeleccionada != null) {
-            botonFichaSeleccionada.setBorderPainted(false);
+            if (boton != botonFichaSeleccionada) { // No limpiar el borde de la ficha actualmente seleccionada
+                boton.setBorderPainted(false);
+            }
         }
     }
 
