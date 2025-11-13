@@ -343,24 +343,46 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 return;
             }
 
-            // Comprobamos si el botón clicado contiene una ficha.
-            boolean esUnaFicha = boton.getIcon() != null && !(boton.getIcon() instanceof IconoDeHueco);
-
-            if (esUnaFicha) {
-                // Si la ficha clicada es la misma que ya está seleccionada, la deseleccionamos.
+            // --- ESCENARIO 1: NO HAY FICHA SELECCIONADA ---
+            // Si no hay nada seleccionado, solo podemos seleccionar una ficha.
+            if (botonFichaSeleccionada == null) {
+                boolean esUnaFicha = boton.getIcon() != null && !(boton.getIcon() instanceof IconoDeHueco);
+                if (esUnaFicha) {
+                    seleccionarFicha(boton);
+                    System.out.println("Nueva ficha seleccionada en casilla: " + boton.getActionCommand());
+                }
+            // --- ESCENARIO 2: YA HAY UNA FICHA SELECCIONADA ---
+            } else {
+                // Si hacemos clic en la misma ficha, la deseleccionamos.
                 if (botonFichaSeleccionada == boton) {
                     limpiarResaltados(); // Esto también pone botonFichaSeleccionada a null.
                     System.out.println("Ficha deseleccionada.");
                 } else {
-                    // Si es una ficha nueva (o si no había ninguna seleccionada), la seleccionamos.
-                    // El método seleccionarFicha se encarga de limpiar la selección anterior.
-                    seleccionarFicha(boton);
-                    System.out.println("Nueva ficha seleccionada en casilla: " + boton.getActionCommand());
-                }
-            } else { // El clic fue en una casilla (no en una ficha).
-                // Si tenemos una ficha seleccionada, intentamos moverla a esta casilla.
-                if (botonFichaSeleccionada != null) {
-                    ejecutarMovimientoOCaptura(boton);
+                    // Si hacemos clic en otro botón, verificamos si es otra ficha.
+                    boolean esOtraFicha = boton.getIcon() != null && !(boton.getIcon() instanceof IconoDeHueco);
+
+                    if (esOtraFicha) {
+                        // Es otra ficha. Verificamos si es del mismo color.
+                        Integer idFichaSeleccionada = getFichaEnCasilla(Integer.parseInt(botonFichaSeleccionada.getActionCommand()));
+                        Integer idFichaClicada = getFichaEnCasilla(Integer.parseInt(boton.getActionCommand()));
+                        int idCasillaClicada = Integer.parseInt(boton.getActionCommand());
+                        
+                        boolean esMismoColor = idFichaSeleccionada != null && idFichaClicada != null && getGrupoColor(idFichaSeleccionada) == getGrupoColor(idFichaClicada);
+                        boolean estaEnCasa = idCasillaClicada >= 101;
+
+                        // Si la ficha clicada es del mismo color O si está en su casa (fuera del tablero principal)
+                        if (esMismoColor || estaEnCasa) {
+                            // Simplemente cambiamos la selección a la nueva ficha.
+                            seleccionarFicha(boton);
+                            System.out.println("Selección cambiada a otra ficha.");
+                        } else {
+                            // Si es de color diferente Y está en el tablero, es una captura potencial.
+                            ejecutarMovimientoOCaptura(boton);
+                        }
+                    } else {
+                        // Si es una casilla vacía, es un movimiento.
+                        ejecutarMovimientoOCaptura(boton);
+                    }
                 }
             }
         };
