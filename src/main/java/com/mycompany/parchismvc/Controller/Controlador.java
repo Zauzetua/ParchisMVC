@@ -9,6 +9,7 @@ import com.mycompany.parchismvc.Model.Jugador;
 import com.mycompany.parchismvc.Model.Sala;
 import com.mycompany.parchismvc.Service.ServicioJuego;
 import com.mycompany.parchismvc.View.Vista;
+import com.mycompany.parchismvc.View.GameEvents;
 import com.mycompany.parchismvc.net.Client.ClienteRedMin;
 import com.mycompany.parchismvc.net.dto.Mensaje;
 import com.mycompany.parchismvc.net.dto.MensajeError;
@@ -41,9 +42,13 @@ public class Controlador {
     private CompletableFuture<com.mycompany.parchismvc.net.dto.MensajeResultado> pendingResultado;
     private CompletableFuture<com.mycompany.parchismvc.net.dto.MensajeDado> pendingDado;
     private com.mycompany.parchismvc.View.Vista vista;
+    private GameEvents events; // callbacks UI opcionales
 
     public void setVista(Vista v) {
         this.vista = v;
+    }
+    public void setEvents(GameEvents e){
+        this.events = e;
     }
 
     // Esperas sincronas (para que tu Vista funcione igual que local)
@@ -69,10 +74,25 @@ public class Controlador {
             var unido = pendingUnido.get(5, TimeUnit.SECONDS);  // espera respuesta
             this.miId = unido.jugadorId;
             Vista.mostrarInfo("Servidor asigno miId=" + miId);
+            if(events!=null) events.onRegistrado(miId);
             return unido.jugadorId;
         } catch (Exception e) {
             Vista.mostrarError("Fallo al registrar: " + e.getMessage());
+            if(events!=null) events.onError("Fallo al registrar: " + e.getMessage());
             return null;
+        }
+    }
+
+    // Variante asincrona para UI Swing
+    public void registrarAsync(String nombre, String avatar){
+        if(red == null || !red.isReady()){
+            if(events!=null) events.onError("No conectado al servidor (inicia o reintenta conexión)");
+            return;
+        }
+        try {
+            red.enviar(new SolicitudUnirse(salaId, nombre, avatar));
+        } catch(Exception ex){
+            if(events!=null) events.onError("Error enviando solicitud: "+ex.getMessage());
         }
     }
 
@@ -297,8 +317,10 @@ public class Controlador {
             red.onMensaje(this::onMensaje);
             red.conectar();
             Vista.mostrarInfo("Conectado a " + host + ":" + puerto + " sala=" + salaId);
+            if(events!=null) events.onConectado(host, puerto, salaId);
         } catch (Exception e) {
             Vista.mostrarError("No se pudo conectar: " + e.getMessage());
+            if(events!=null) events.onError("No se pudo conectar: " + e.getMessage());
         }
     }
 
@@ -317,6 +339,8 @@ public class Controlador {
                     if (pendingUnido != null && !pendingUnido.isDone()) {
                         pendingUnido.complete(ok);
                     }
+                    this.miId = ok.jugadorId;
+                    if(events!=null) events.onRegistrado(miId);
                 }
                 case CUENTA_ATRAS -> {
                     var cta = (com.mycompany.parchismvc.net.dto.MensajeCuentaAtras) m;
@@ -348,6 +372,7 @@ public class Controlador {
                     } else {
                         Vista.mostrarError(r.mensaje);
                     }
+                    if(events!=null) events.onResultado(r.ok, r.mensaje);
                 }
                 case DADO -> {
                     var d = (com.mycompany.parchismvc.net.dto.MensajeDado) m;
@@ -356,6 +381,7 @@ public class Controlador {
                     }
                     if (vista != null) {
                     }
+                    if(events!=null) events.onDado(d.jugadorId, d.valor);
 
                 }
                 case ESTADO -> {
@@ -363,6 +389,7 @@ public class Controlador {
                     this.salaCache = est.sala;
                     this.turnoCache = est.turnoDe;
                     Vista.actualizarEstado(salaCache, turnoCache, miId);
+                    if(events!=null) events.onEstado(salaCache, turnoCache, miId);
 
                     if (vista != null) {
                         if (est.sala.estado == com.mycompany.parchismvc.Model.EstadoSala.JUGANDO) {
@@ -377,6 +404,7 @@ public class Controlador {
                 case ERROR -> {
                     var er = (MensajeError) m;
                     Vista.mostrarError(er.razon);
+                    if(events!=null) events.onError(er.razon);
                 }
                 default -> {
                 }
@@ -384,6 +412,11 @@ public class Controlador {
         } catch (Exception ex) {
             Vista.mostrarError("Error procesando mensaje: " + ex.getMessage());
         }
+    }
+
+    // Desconectar/Salir de la sala (cierra socket)
+    public void desconectar(){
+        try { if(red!=null) red.close(); } catch(Exception ignored) {}
     }
 
 }

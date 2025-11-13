@@ -5,10 +5,13 @@
 package com.mycompany.parchismvc.View;
 
 import com.mycompany.parchismvc.View.UtilsFront.AvatarButton;
-import com.mycompany.parchismvc.View.UtilsFront.CircularImageLabel;
 // import com.mycompany.parchismvc.View.UtilsFront.ImageBackgroundPanel; // Ya no se usa directamente en esta clase
 import java.awt.GridLayout;
 import javax.swing.ButtonGroup;
+import javax.swing.SwingUtilities;
+import javax.swing.JOptionPane;
+import com.mycompany.parchismvc.Controller.Controlador;
+import java.util.UUID;
 
 /**
  *
@@ -18,19 +21,61 @@ public class RegistroJF extends javax.swing.JFrame {
     
     private final ButtonGroup grupoAvatares = new ButtonGroup();
     private String avatarSeleccionado = null;
-    private CircularImageLabel previewAvatar;
+    private Controlador controlador;
+    private boolean conectado = false;
     
     public RegistroJF() {
-        // Crear el preview ANTES de initComponents, porque el GroupLayout lo usa dentro
-        previewAvatar = new CircularImageLabel(140);
         initComponents();
+        inicializarControlador();
         configurarAvatares();
+        wireEventos();
     }
-  
-    // Método ya no requerido para crear el preview; se deja por si quieres ajustar propiedades luego
-    private void configurarPreview(){
-        // previewAvatar ya está creado en el constructor antes de initComponents()
+    private void inicializarControlador(){
+        controlador = new Controlador();
+        controlador.setEvents(new GameEvents() {
+            @Override public void onConectado(String host, int puerto, String salaId) {
+                safe(() -> mostrarInfo("Conectado a "+host+":"+puerto+" sala="+salaId));
+            }
+            @Override public void onRegistrado(UUID jugadorId) {
+                safe(() -> {
+                    mostrarInfo("Registrado con id="+jugadorId);
+                    jButton1.setEnabled(false); // deshabilitar Unirse
+                    AvataresPanel.setEnabled(false);
+                    for(var c: AvataresPanel.getComponents()) c.setEnabled(false);
+                    // Abrir la sala (lobby) y transferir eventos
+                    com.mycompany.parchismvc.View.Sala salaFrame = new com.mycompany.parchismvc.View.Sala(controlador, jugadorId); // abrir lobby
+                    salaFrame.setLocationRelativeTo(RegistroJF.this);
+                    salaFrame.setVisible(true);
+                    RegistroJF.this.setVisible(false); // ocultar registro
+                });
+            }
+            @Override public void onEstado(com.mycompany.parchismvc.Model.Sala sala, UUID turnoDe, UUID yo) {
+                // Podrás actualizar lobby aquí luego
+            }
+            @Override public void onCuentaAtras(int segundos, com.mycompany.parchismvc.Model.Sala sala) { }
+            @Override public void onResultado(boolean ok, String mensaje) {
+                safe(() -> mostrarInfo(mensaje));
+            }
+            @Override public void onDado(UUID jugadorId, int valor) { }
+            @Override public void onError(String razon) { safe(() -> mostrarError(razon)); }
+        });
     }
+
+    private void wireEventos(){
+        jButton1.addActionListener(e -> {
+            var nombre = jTextField1.getText().trim();
+            if(nombre.isEmpty()) { mostrarError("Ingresa un nombre"); return; }
+            if(!conectado){
+                controlador.conectarRed("127.0.0.1",5000,"sala1");
+                conectado = true;
+            }
+            controlador.registrarAsync(nombre, avatarSeleccionado==null?"ratita":avatarSeleccionado);
+        });
+    }
+
+    private void mostrarInfo(String msg){ JOptionPane.showMessageDialog(this,msg,"Info",JOptionPane.INFORMATION_MESSAGE); }
+    private void mostrarError(String msg){ JOptionPane.showMessageDialog(this,msg,"Error",JOptionPane.ERROR_MESSAGE); }
+    private void safe(Runnable r){ if(SwingUtilities.isEventDispatchThread()) r.run(); else SwingUtilities.invokeLater(r); }
   private void configurarAvatares() {
         // jPanel1 es el panel “Avatares” (contenedor en tu diseño)
     AvataresPanel.removeAll();
@@ -52,10 +97,7 @@ public class RegistroJF extends javax.swing.JFrame {
             String path = (String) av[1];
 
             AvatarButton b = new AvatarButton(id, path, 96);
-            b.addActionListener(e -> {
-                avatarSeleccionado = e.getActionCommand();
-                previewAvatar.setResourcePath(path);
-            });
+            b.addActionListener(e -> avatarSeleccionado = e.getActionCommand());
             grupoAvatares.add(b);
             AvataresPanel.add(b);
         }
@@ -67,8 +109,7 @@ public class RegistroJF extends javax.swing.JFrame {
                 var first = it.nextElement();
                 first.setSelected(true);
                 avatarSeleccionado = first.getActionCommand();
-                // path del primero
-                previewAvatar.setResourcePath((String) AVS[0][1]);
+                // avatarSeleccionado queda seteado; la UI ya muestra el aro de selección
             }
         }
 
@@ -112,25 +153,22 @@ public class RegistroJF extends javax.swing.JFrame {
         javax.swing.GroupLayout UnirsePanelLayout = new javax.swing.GroupLayout(UnirsePanel);
         UnirsePanel.setLayout(UnirsePanelLayout);
         UnirsePanelLayout.setHorizontalGroup(
-            UnirsePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
-            .addGroup(UnirsePanelLayout.createSequentialGroup()
-                .addGap(33, 33, 33)
+            UnirsePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, UnirsePanelLayout.createSequentialGroup()
+                .addContainerGap(33, Short.MAX_VALUE)
                 .addGroup(UnirsePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.CENTER)
-                    .addComponent(previewAvatar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, 256, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 217, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(33, Short.MAX_VALUE))
+                .addGap(33, 33, 33))
         );
         UnirsePanelLayout.setVerticalGroup(
             UnirsePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(UnirsePanelLayout.createSequentialGroup()
-                .addGap(20, 20, 20)
-                .addComponent(previewAvatar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(25, 25, 25)
+                .addGap(60, 60, 60)
                 .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(30, 30, 30)
+                .addGap(45, 45, 45)
                 .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 44, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(60, Short.MAX_VALUE))
+                .addContainerGap(140, Short.MAX_VALUE))
         );
 
         jLabel2.setFont(new java.awt.Font("Showcard Gothic", 0, 48)); // NOI18N
@@ -178,10 +216,10 @@ public class RegistroJF extends javax.swing.JFrame {
                     .addGroup(RegistroPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                         .addComponent(jLabel2)
                         .addComponent(jLabel1)))
-                .addGap(18, 18, 18)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(RegistroPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(UnirsePanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(AvataresPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(AvataresPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(UnirsePanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(84, Short.MAX_VALUE))
         );
 
@@ -190,16 +228,16 @@ public class RegistroJF extends javax.swing.JFrame {
         FondoPanelLayout.setHorizontalGroup(
             FondoPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, FondoPanelLayout.createSequentialGroup()
-                .addContainerGap(187, Short.MAX_VALUE)
+                .addContainerGap(192, Short.MAX_VALUE)
                 .addComponent(RegistroPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(184, 184, 184))
+                .addGap(179, 179, 179))
         );
         FondoPanelLayout.setVerticalGroup(
             FondoPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, FondoPanelLayout.createSequentialGroup()
-                .addContainerGap(76, Short.MAX_VALUE)
+            .addGroup(FondoPanelLayout.createSequentialGroup()
+                .addGap(77, 77, 77)
                 .addComponent(RegistroPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(71, 71, 71))
+                .addContainerGap(82, Short.MAX_VALUE))
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
