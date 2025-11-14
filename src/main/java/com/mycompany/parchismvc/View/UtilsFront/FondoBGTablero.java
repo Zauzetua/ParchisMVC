@@ -20,11 +20,13 @@ import java.awt.event.ActionListener;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Random;
+import java.util.List;
+import java.util.UUID;
 import javax.swing.Timer;
 import javax.swing.JButton;
 import javax.swing.Icon;
 import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
 /**
@@ -38,6 +40,9 @@ public class FondoBGTablero extends ImageBackgroundPanel {
 
     // Timer para la animación de la ficha
     private Timer animator;
+    
+    // Listener para notificar cuando se completa un movimiento
+    private java.util.function.BiConsumer<Integer, Integer> onMoveListener;
 
     /**
      * Clase interna para dibujar un círculo negro que representa un hueco
@@ -83,9 +88,10 @@ public class FondoBGTablero extends ImageBackgroundPanel {
     // Mapa para guardar la referencia a cada botón por su número de casilla
     private final Map<Integer, JButton> botonesCasillas = new HashMap<>();
     // Generador de números aleatorios para la simulación
-    private final Random random = new Random();
     // Mapa para rastrear la posición de cada ficha. Key: ID de la casa (101-116), Value: ID de la casilla actual.
-    private final Map<Integer, Integer> mapaPosicionFichas = new HashMap<>();
+    private final Map<UUID, Integer> mapaPosicionFichas = new HashMap<>();
+    private final Map<UUID, ColorJugador> mapaColorDeFicha = new HashMap<>();
+    private Map<UUID, List<com.mycompany.parchismvc.Model.Ficha>> fichasPorJugadorActuales = new HashMap<>();
 
     // Mapa que define la geometría del tablero. Asocia un ID de casilla a su Rectángulo (x, y, ancho, alto)
     private static final Map<Integer, Rectangle> mapaCoordenadas = new HashMap<>();
@@ -239,67 +245,17 @@ public class FondoBGTablero extends ImageBackgroundPanel {
     // Constructor
     public FondoBGTablero() {
         super("");
-        loadBoardFromDisk();
-        setLayout(null);
-        crearBotonesParaCasillas();
-        agregarBotonSimulacion(); // Añadimos el botón para la simulación
-
-        // Inicializamos el mapa de posiciones de las fichas. Al principio, todas están en su casa.
-        for (int i = 101; i <= 116; i++) {
-            mapaPosicionFichas.put(i, i);
-        }
+        // La inicialización se mueve a un método separado para asegurar el orden correcto.
+        initComponents();
     }
 
     /**
-     * Crea y añade un botón para simular la aparición de casillas.
+     * Crea y añade un botón para simular la aparición de casillas. (Método obsoleto)
      */
-    private void agregarBotonSimulacion() {
-        JButton btnSimular = new JButton("Simular");
-        // Posicionamos el botón en la esquina inferior izquierda del tablero
-        btnSimular.setBounds(10, 310, 100, 30);
+    private void agregarBotonSimulacion() { }
 
-        btnSimular.addActionListener(e -> {
-            // Forzar la habilitación del panel para asegurar que los listeners de mouse funcionen.
-            this.setEnabled(true);
-
-            // 1. Generar un número aleatorio entre 1 y 5
-            int numeroRandom = random.nextInt(5) + 1;
-            System.out.println("Número aleatorio generado: " + numeroRandom);
-
-            // // 2. Ocultar todos los botones del tablero (pero mantener visibles las fichas)
-            // for (Map.Entry<Integer, JButton> entry : botonesCasillas.entrySet()) {
-            //     if (entry.getKey() < 101) { // Solo afecta a las casillas del tablero, no a las fichas.
-            //         JButton botonCasilla = entry.getValue();
-            //         if (botonCasilla.getIcon() != null) { // Si hay una ficha en esta casilla...
-            //             // La mantenemos visible y HABILITADA para que el icono no se ponga gris.
-            //             // Simplemente la hacemos transparente y sin borde para que no parezca un destino.
-            //             botonCasilla.setEnabled(true);
-            //             botonCasilla.setContentAreaFilled(false);
-            //             botonCasilla.setBorderPainted(false);
-            //         } else {
-            //             // Si no hay ficha, la ocultamos completamente.
-            //             botonCasilla.setVisible(false);
-            //             botonCasilla.setEnabled(false);
-            //         }
-            //     }
-            // }
-
-            // 3. Mostrar solo los botones consecutivos según el número aleatorio
-            System.out.println("Mostrando botones del 0 al " + (numeroRandom - 1));
-            for (int i = 0; i < numeroRandom; i++) {
-                JButton botonAMostrar = botonesCasillas.get(i);
-                if (botonAMostrar != null) {
-                    botonAMostrar.setVisible(true);
-                    botonAMostrar.setEnabled(true);
-                    // Nos aseguramos de que las casillas de destino se vean como tal
-                    botonAMostrar.setContentAreaFilled(true);
-                    botonAMostrar.setBackground(new Color(255, 255, 0, 80));
-                    botonAMostrar.setBorder(javax.swing.BorderFactory.createLineBorder(Color.ORANGE, 1));
-                }
-            }
-        });
-
-        this.add(btnSimular);
+    public void setOnMoveListener(java.util.function.BiConsumer<Integer, Integer> listener) {
+        this.onMoveListener = listener;
     }
 
     /**
@@ -328,6 +284,15 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 case AMARILLO -> 5;
             };
 
+            // CASO ESPECIAL: Si se saca un 5, se puede mover una ficha desde casa.
+            if (cantidadDeCasillas == 5) {
+                JButton botonSalida = botonesCasillas.get(casillaDeSalida);
+                if (botonSalida != null) {
+                    botonSalida.setVisible(true);
+                    botonSalida.setEnabled(true);
+                }
+            }
+
             // 2. Mostrar y resaltar solo las casillas deseadas
             for (int i = 0; i < cantidadDeCasillas; i++) {
                 // Calculamos el ID de la casilla, asegurando que vuelva a 1 después de 68
@@ -347,31 +312,112 @@ public class FondoBGTablero extends ImageBackgroundPanel {
     }
 
     /**
+     * Actualiza la posición de todas las fichas en el tablero basándose en el estado
+     * proporcionado por el servidor. Este método es clave para la sincronización visual
+     * entre jugadores.
+     *
+     * @param fichasPorJugador Un mapa que contiene la lista de fichas para cada ID de jugador.
+     */
+    public void actualizarEstadoFichas(Map<UUID, List<com.mycompany.parchismvc.Model.Ficha>> fichasPorJugador, Map<UUID, ColorJugador> mapaColoresJugadores) {
+        SwingUtilities.invokeLater(() -> {
+            limpiarResaltados(); // Limpia cualquier selección o resaltado activo.
+            this.fichasPorJugadorActuales = fichasPorJugador; // Guardamos el estado actual
+            mapaColorDeFicha.clear();
+
+            // 1. Resetear el tablero: Quitar todos los iconos de las casillas del tablero (1-100)
+            // y poner huecos en TODAS las casas (101-116).
+            for (int i = 1; i <= 116; i++) {
+                JButton botonCasilla = botonesCasillas.get(i);
+                if (botonCasilla != null) {
+                    if (i > 100) { // Si es una casa
+                        botonCasilla.setIcon(new IconoDeHueco(botonCasilla.getWidth() - 10, botonCasilla.getHeight() - 15));
+                    } else { // Si es una casilla del tablero
+                        botonCasilla.setIcon(null);
+                    }
+                }
+            }
+
+            // 2. Recorremos todas las fichas del estado y las (re)colocamos en su lugar.
+            for (Map.Entry<UUID, List<com.mycompany.parchismvc.Model.Ficha>> entry : fichasPorJugador.entrySet()) {
+                ColorJugador color = mapaColoresJugadores.get(entry.getKey());
+                List<com.mycompany.parchismvc.Model.Ficha> fichas = entry.getValue();
+                for (int i = 0; i < fichas.size(); i++) {
+                    com.mycompany.parchismvc.Model.Ficha ficha = fichas.get(i);
+                    if (ficha == null) {
+                        continue;
+                    }
+
+                    UUID idFicha = ficha.id;
+                    int idCasillaActual = ficha.posicion;
+                    int indiceFicha = i; // Deducimos el índice por el orden en la lista.
+
+                    // Actualizamos los mapas locales
+                    mapaPosicionFichas.put(idFicha, idCasillaActual);
+                    mapaColorDeFicha.put(idFicha, color);
+
+                    // Obtenemos el icono de la ficha desde su botón de casa original (que nunca cambia)
+                    JButton casaOriginal = botonesCasillas.get(getBotonCasaIdDeFicha(idFicha, indiceFicha, color));
+                    
+                    // Si la posición es 0, la ficha está en su casa. El destino es el botón de la casa.
+                    // Si no, el destino es la casilla del tablero.
+                    JButton destino = (idCasillaActual == 0) 
+                                      ? casaOriginal 
+                                      : botonesCasillas.get(idCasillaActual);
+                    
+                    if (casaOriginal != null && destino != null) { // Si el destino es válido
+                        // Colocamos el icono de la ficha (que siempre está en el botón de casa) en su nueva posición
+                        destino.setIcon(casaOriginal.getIcon());
+                    }
+                }
+            }
+            repaint();
+        });
+    }
+
+    /**
      * Determina el "grupo de color" de una ficha basado en su ID de casa. 1:
      * Rojo, 2: Azul, 3: Verde, 4: Amarillo, 0: Desconocido.
      */
-    private int getGrupoColor(int idFicha) {
-        if (idFicha >= 101 && idFicha <= 104) {
-            return 1; // Rojo
-        }
-        if (idFicha >= 105 && idFicha <= 108) {
-            return 2; // Azul
-        }
-        if (idFicha >= 109 && idFicha <= 112) {
-            return 3; // Verde
-        }
-        if (idFicha >= 113 && idFicha <= 116) {
-            return 4; // Amarillo
-        }
-        return 0;
+    private ColorJugador getColorDeFicha(UUID idFicha) {
+        return mapaColorDeFicha.get(idFicha);
     }
 
-    private Integer getFichaEnCasilla(int idCasilla) {
-        return mapaPosicionFichas.entrySet().stream()
+    private int getBotonCasaIdDeFicha(UUID idFicha, int indiceFicha, ColorJugador color) {
+        if (color == null || indiceFicha < 0 || indiceFicha > 3) return 0; // Guarda de seguridad
+        return switch (color) {
+            case ROJO -> 101 + indiceFicha;
+            case AZUL -> 105 + indiceFicha;
+            case VERDE -> 109 + indiceFicha;
+            case AMARILLO -> 113 + indiceFicha;
+        };
+    }
+
+    private UUID getFichaEnCasilla(int idCasilla) {
+        // Primero, busca en el mapa de posiciones actual.
+        UUID fichaId = mapaPosicionFichas.entrySet().stream()
                 .filter(entry -> entry.getValue().equals(idCasilla))
                 .map(Map.Entry::getKey)
                 .findFirst()
                 .orElse(null);
+
+        // Si no se encuentra y la casilla es una casa (ID >= 101),
+        // busca qué ficha corresponde a esa casa.
+        if (fichaId == null && idCasilla >= 101) {
+            // Iteramos sobre las fichas que sabemos que están en la base (posición 0)
+            for(Map.Entry<UUID, Integer> posEntry : mapaPosicionFichas.entrySet()){
+                if(posEntry.getValue() == 0){ // Si la ficha está en la base
+                    UUID idFichaEnBase = posEntry.getKey();
+                    ColorJugador color = getColorDeFicha(idFichaEnBase);
+                    int indice = getIndiceDeFicha(idFichaEnBase, fichasPorJugadorActuales);
+
+                    // Verificamos si el botón de casa de esta ficha coincide con el botón clicado
+                    if(getBotonCasaIdDeFicha(idFichaEnBase, indice, color) == idCasilla){
+                        return idFichaEnBase;
+                    }
+                }
+            }
+        }
+        return fichaId;
     }
 
     /**
@@ -393,12 +439,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
             // Y NO tenemos una ficha ya seleccionada...
             if (botonFichaSeleccionada == null) {
                 if (boton.getIcon() != null && !(boton.getIcon() instanceof IconoDeHueco)) {
-                    // Seleccionamos esta nueva ficha.
-                    System.out.println("Ficha seleccionada en casilla: " + boton.getActionCommand());
-                    botonFichaSeleccionada = boton;
-                    botonFichaSeleccionada.setBorder(javax.swing.BorderFactory.createLineBorder(Color.CYAN, 3));
-                    botonFichaSeleccionada.setBorderPainted(true);
-                    resaltarVictimas(); // Mostramos posibles capturas
+                    seleccionarFicha(boton);
                 }
                 // --- ESCENARIO 2: EJECUTAR MOVIMIENTO O CAPTURA ---
                 // Si YA tenemos una ficha seleccionada...
@@ -406,16 +447,16 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 // Si el usuario vuelve a hacer clic en la misma ficha, la deseleccionamos.
                 if (botonFichaSeleccionada == boton) {
                     limpiarResaltados();
-                    botonFichaSeleccionada = null;
                 } else {
                     int idCasillaClicada = Integer.parseInt(boton.getActionCommand());
                     boolean esOtraFicha = boton.getIcon() != null && !(boton.getIcon() instanceof IconoDeHueco);
-                    Integer idFichaSeleccionada = getFichaEnCasilla(Integer.parseInt(botonFichaSeleccionada.getActionCommand()));
-                    Integer idFichaClicada = getFichaEnCasilla(idCasillaClicada);
+                    UUID idFichaSeleccionada = getFichaEnCasilla(Integer.parseInt(botonFichaSeleccionada.getActionCommand()));
+                    UUID idFichaClicada = getFichaEnCasilla(idCasillaClicada);
+                    int idCasillaOrigen = Integer.parseInt(botonFichaSeleccionada.getActionCommand());
 
                     // PRIORIDAD 1: Cambiar selección a otra ficha del MISMO color.
                     if (esOtraFicha && idFichaSeleccionada != null && idFichaClicada != null &&
-                        getGrupoColor(idFichaSeleccionada) == getGrupoColor(idFichaClicada)) {
+                        getColorDeFicha(idFichaSeleccionada) == getColorDeFicha(idFichaClicada)) {
                         
                         seleccionarFicha(boton);
                         System.out.println("Selección cambiada a otra ficha del mismo color.");
@@ -424,8 +465,8 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                     } else if (esOtraFicha && idCasillaClicada >= 101) {
                         seleccionarFicha(boton);
                         System.out.println("Selección cambiada a ficha en casa.");
-                    // PRIORIDAD 3: Si el destino es una casilla de movimiento válida (visible y habilitada), intentamos mover/comer.
-                    } else if (boton.isVisible() && boton.isEnabled()) {
+                    // PRIORIDAD 3: Si el destino es una casilla de movimiento válida (visible y habilitada), intentamos mover/comer. Esto incluye sacar de casa.
+                    } else if (boton.isVisible() && boton.isEnabled() && (idCasillaOrigen >= 101 || idCasillaOrigen < 101)) {
                         ejecutarMovimientoOCaptura(boton);
                     // PRIORIDAD 4: Si no es un destino válido, comprobamos si es cualquier otra ficha (enemiga) para cambiar la selección.
                     } else if (esOtraFicha) {
@@ -447,7 +488,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         int idCasillaDestino = Integer.parseInt(destino.getActionCommand());
 
         // Identificamos la ficha que se mueve
-        Integer idFichaMovida = getFichaEnCasilla(Integer.parseInt(origen.getActionCommand()));
+        UUID idFichaMovida = getFichaEnCasilla(Integer.parseInt(origen.getActionCommand()));
         if (idFichaMovida == null) {
             limpiarResaltados();
             botonFichaSeleccionada = null;
@@ -455,27 +496,34 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         }
 
         // Verificamos si el destino está ocupado por otra ficha (la víctima)
-        Integer idFichaEnDestino = getFichaEnCasilla(idCasillaDestino);
+        UUID idFichaEnDestino = getFichaEnCasilla(idCasillaDestino);
 
         // Preparamos la acción de mover la ficha principal. Se ejecutará sola o después de una captura.
         Runnable moverFichaPrincipal = () -> {
             mapaPosicionFichas.put(idFichaMovida, idCasillaDestino);
             // Cuando la animación termine, el botón de destino se convertirá en la nueva ficha seleccionada.
-            animarFicha(origen, destino, () -> seleccionarFicha(destino));
+            animarFicha(origen, destino, () -> {
+                seleccionarFicha(destino);
+                // Notificamos que el movimiento ha terminado
+                if (onMoveListener != null) {
+                    int indiceFicha = getIndiceDeFicha(idFichaMovida, fichasPorJugadorActuales);
+                    onMoveListener.accept(indiceFicha, idCasillaDestino);
+                }
+            });
         };
         limpiarResaltados(); // Limpiamos resaltados de víctimas (rojo) antes de la acción.
 
         // Si hay una ficha en el destino (es una captura potencial)
         if (idFichaEnDestino != null) {
             // Verificamos que sea de un color diferente Y que la víctima esté en el tablero (no en su casa).
-            if (getGrupoColor(idFichaMovida) != getGrupoColor(idFichaEnDestino) && idCasillaDestino < 101) {
+            if (getColorDeFicha(idFichaMovida) != getColorDeFicha(idFichaEnDestino) && idCasillaDestino < 101) {
 
                 System.out.println("¡COMER! Ficha " + idFichaMovida + " come a " + idFichaEnDestino);
                 JButton victima = botonesCasillas.get(idCasillaDestino);
-                JButton casaOriginalFichaComida = botonesCasillas.get(idFichaEnDestino);
-
-                // 1. Actualizamos el modelo: la ficha comida vuelve a su ID de casa.
-                mapaPosicionFichas.put(idFichaEnDestino, idFichaEnDestino);
+                
+                // Obtenemos el botón de la casa de la víctima para la animación de retorno.
+                ColorJugador colorVictima = getColorDeFicha(idFichaEnDestino);
+                JButton casaOriginalFichaComida = botonesCasillas.get(getBotonCasaIdDeFicha(idFichaEnDestino, getIndiceDeFicha(idFichaEnDestino, fichasPorJugadorActuales), colorVictima));
 
                 // 2. Animamos a la víctima de vuelta a casa. Cuando termine, se ejecutará la animación de la ficha principal.
                 animarFicha(victima, casaOriginalFichaComida, moverFichaPrincipal);
@@ -485,6 +533,25 @@ public class FondoBGTablero extends ImageBackgroundPanel {
             moverFichaPrincipal.run();
         }
 
+    }
+    
+    /**
+     * Busca el índice de una ficha a partir de su UUID.
+     * Este método es un placeholder y asume que el servidor enviará el índice.
+     * Una implementación más robusta podría buscarlo en una estructura de datos local.
+     * @param idFicha El UUID de la ficha.
+     * @return El índice de la ficha (0-3), o -1 si no se encuentra.
+     */
+    private int getIndiceDeFicha(UUID idFicha, Map<UUID, List<com.mycompany.parchismvc.Model.Ficha>> fichasPorJugador) {
+        for (List<com.mycompany.parchismvc.Model.Ficha> fichas : fichasPorJugador.values()) {
+            for (int i = 0; i < fichas.size(); i++) {
+                com.mycompany.parchismvc.Model.Ficha ficha = fichas.get(i);
+                if (ficha != null && ficha.id.equals(idFicha)) {
+                    return i; // Encontramos la ficha, devolvemos su índice en la lista.
+                }
+            }
+        }
+        return -1; // No se encontró la ficha.
     }
     
     /**
@@ -615,7 +682,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         if (botonFichaSeleccionada == null) {
             return;
         }
-        Integer idFichaAtacante = getFichaEnCasilla(Integer.parseInt(botonFichaSeleccionada.getActionCommand()));
+        UUID idFichaAtacante = getFichaEnCasilla(Integer.parseInt(botonFichaSeleccionada.getActionCommand()));
         if (idFichaAtacante == null) {
             return;
         }
@@ -630,9 +697,9 @@ public class FondoBGTablero extends ImageBackgroundPanel {
             JButton botonCasilla = entry.getValue();
             // Si la casilla es visible y está habilitada (es un destino válido)
             if (botonCasilla.isVisible() && botonCasilla.isEnabled()) {
-                Integer idVictima = getFichaEnCasilla(entry.getKey());
+                UUID idVictima = getFichaEnCasilla(entry.getKey());
                 // Si hay una ficha en esa casilla, es de otro color Y la víctima está en el tablero...
-                if (idVictima != null && getGrupoColor(idFichaAtacante) != getGrupoColor(idVictima) && entry.getKey() < 101) {
+                if (idVictima != null && getColorDeFicha(idFichaAtacante) != getColorDeFicha(idVictima) && entry.getKey() < 101) {
 
                     // ...la resaltamos como "comible".
                     botonCasilla.setBorder(javax.swing.BorderFactory.createLineBorder(Color.RED, 3));
@@ -666,6 +733,13 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         return null;
     }
 
+    private void initComponents() {
+        loadBoardFromDisk();
+        setLayout(null);
+        crearBotonesParaCasillas();
+    }
+    
+
     private void crearBotonesParaCasillas() {
         for (Map.Entry<Integer, Rectangle> entry : mapaCoordenadas.entrySet()) {
             int idCasilla = entry.getKey();
@@ -675,51 +749,9 @@ public class FondoBGTablero extends ImageBackgroundPanel {
             boton.setActionCommand(String.valueOf(idCasilla));
             boton.setBounds(bounds);
 
-            // --- MODO DE ARRASTRE PARA DEPURACIÓN ---
+            // Se asigna el listener unificado para manejar los clics del juego.
             final ActionListener actionListener = crearActionListenerUnificado(boton);
-            MouseAdapter dragListener = new MouseAdapter() {
-                private Point startPoint;
-                private boolean isDragging = false;
-
-                @Override
-                public void mousePressed(MouseEvent e) {
-                    startPoint = e.getPoint();
-                    isDragging = false;
-                }
-
-                @Override
-                public void mouseDragged(MouseEvent e) {
-                    if (startPoint == null) {
-                        return;
-                    }
-
-                    isDragging = true; // Si se detecta un drag, se marca como tal.
-                    Point currentLocation = boton.getLocation();
-                    int newX = currentLocation.x + e.getX() - startPoint.x;
-                    int newY = currentLocation.y + e.getY() - startPoint.y;
-                    boton.setLocation(newX, newY);
-                }
-
-                @Override
-                public void mouseReleased(MouseEvent e) {
-                    if (isDragging) {
-                        // Si fue un arrastre, imprimimos las coordenadas.
-                        System.out.println(
-                                "mapaCoordenadas.put(" + boton.getActionCommand()
-                                + ", new Rectangle(" + boton.getX() + ", " + boton.getY() + ", "
-                                + boton.getWidth() + ", " + boton.getHeight() + "));"
-                        );
-                    } else {
-                        // Si no fue un arrastre, procesamos el clic del juego.
-                        // Esto asegura que el clic normal siga funcionando si no se arrastra.
-                        actionListener.actionPerformed(new java.awt.event.ActionEvent(boton, java.awt.event.ActionEvent.ACTION_PERFORMED, boton.getActionCommand()));
-                    }
-                    startPoint = null;
-                    isDragging = false;
-                }
-            };
-            boton.addMouseListener(dragListener);
-            boton.addMouseMotionListener(dragListener);
+            boton.addActionListener(actionListener);
 
             // --- Lógica para asignar iconos o estilo por defecto ---
             String iconFileName = null;
@@ -743,14 +775,14 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 boton.setBorderPainted(false);
 
             } else { // Es un botón de CASILLA del tablero
+                // Las casillas deben ser transparentes e invisibles por defecto.
                 boton.setOpaque(false);
-                boton.setContentAreaFilled(true);
-                boton.setBackground(new Color(255, 255, 0, 80));
-                boton.setBorder(javax.swing.BorderFactory.createLineBorder(Color.ORANGE, 1));
+                boton.setContentAreaFilled(false);
+                boton.setBorderPainted(false);
             }
 
             // --- Estado Inicial: Fichas visibles, resto oculto ---
-            boton.setVisible(idCasilla >= 101); // Solo las fichas son visibles al inicio
+            boton.setVisible(idCasilla >= 101); // Solo las fichas (ID >= 101) son visibles al inicio
             boton.setEnabled(idCasilla >= 101); // Solo las fichas se pueden clickear al inicio
 
             this.add(boton);

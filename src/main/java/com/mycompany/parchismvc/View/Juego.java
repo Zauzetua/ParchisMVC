@@ -62,6 +62,13 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
                 controlador.tirar(miId); // Llamamos al método correcto con el ID del jugador
             }
         });
+        
+        // Configuramos el listener para cuando se mueva una ficha en el tablero
+        ((com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero) JPTablero).setOnMoveListener((indiceFicha, idCasillaDestino) -> {
+            if (controlador != null) {
+                controlador.mover(miId, indiceFicha);
+            }
+        });
     }
 
     /**
@@ -229,11 +236,12 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
             if (turnoDe != null && turnoDe.equals(jugador.id)) {
                 lblNickName.setText("Turno de: " + jugador.nombre);
             }
+        }
 
-            // Activar el botón de tirar dado solo si es mi turno
-            if (yo != null && turnoDe != null) {
-                btnTirarDado.setEnabled(yo.equals(turnoDe));
-            }
+        // Activar el botón de tirar dado solo si es mi turno.
+        // Esta lógica debe ir FUERA del bucle para que se evalúe una sola vez.
+        if (yo != null && turnoDe != null) {
+            btnTirarDado.setEnabled(yo.equals(turnoDe));
         }
     }
 
@@ -250,7 +258,11 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
     @Override
     public void onEstado(Sala sala, UUID turnoDe, UUID yo) {
         // Este evento actualiza la UI del juego cuando hay cambios
-        SwingUtilities.invokeLater(() -> actualizarJugadores(sala.jugadores, turnoDe, this.miId));
+        SwingUtilities.invokeLater(() -> {
+            actualizarJugadores(sala.jugadores, turnoDe, this.miId);
+            // Sincronizamos el estado visual de las fichas en el tablero.
+            ((com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero) JPTablero).actualizarEstadoFichas(sala.fichasPorJugador, this.mapaColoresJugadores);
+        });
     }
 
     @Override
