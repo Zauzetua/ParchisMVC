@@ -265,23 +265,23 @@ public class FondoBGTablero extends ImageBackgroundPanel {
             int numeroRandom = random.nextInt(5) + 1;
             System.out.println("Número aleatorio generado: " + numeroRandom);
 
-            // 2. Ocultar todos los botones del tablero (pero mantener visibles las fichas)
-            for (Map.Entry<Integer, JButton> entry : botonesCasillas.entrySet()) {
-                if (entry.getKey() < 101) { // Solo afecta a las casillas del tablero, no a las fichas.
-                    JButton botonCasilla = entry.getValue();
-                    if (botonCasilla.getIcon() != null) { // Si hay una ficha en esta casilla...
-                        // La mantenemos visible y HABILITADA para que el icono no se ponga gris.
-                        // Simplemente la hacemos transparente y sin borde para que no parezca un destino.
-                        botonCasilla.setEnabled(true);
-                        botonCasilla.setContentAreaFilled(false);
-                        botonCasilla.setBorderPainted(false);
-                    } else {
-                        // Si no hay ficha, la ocultamos completamente.
-                        botonCasilla.setVisible(false);
-                        botonCasilla.setEnabled(false);
-                    }
-                }
-            }
+            // // 2. Ocultar todos los botones del tablero (pero mantener visibles las fichas)
+            // for (Map.Entry<Integer, JButton> entry : botonesCasillas.entrySet()) {
+            //     if (entry.getKey() < 101) { // Solo afecta a las casillas del tablero, no a las fichas.
+            //         JButton botonCasilla = entry.getValue();
+            //         if (botonCasilla.getIcon() != null) { // Si hay una ficha en esta casilla...
+            //             // La mantenemos visible y HABILITADA para que el icono no se ponga gris.
+            //             // Simplemente la hacemos transparente y sin borde para que no parezca un destino.
+            //             botonCasilla.setEnabled(true);
+            //             botonCasilla.setContentAreaFilled(false);
+            //             botonCasilla.setBorderPainted(false);
+            //         } else {
+            //             // Si no hay ficha, la ocultamos completamente.
+            //             botonCasilla.setVisible(false);
+            //             botonCasilla.setEnabled(false);
+            //         }
+            //     }
+            // }
 
             // 3. Mostrar solo los botones consecutivos según el número aleatorio
             System.out.println("Mostrando botones del 0 al " + (numeroRandom - 1));
@@ -299,6 +299,38 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         });
 
         this.add(btnSimular);
+    }
+
+    /**
+     * Oculta todas las casillas del tablero y resalta las que se pasen como parámetro.
+     * @param idsDeCasillasAMostrar Los IDs de las casillas a resaltar.
+     */
+    public void mostrarCasillasDestino(int... idsDeCasillasAMostrar) {
+        SwingUtilities.invokeLater(() -> {
+            // 1. Ocultar todas las casillas del tablero (las que no tienen ficha)
+            for (Map.Entry<Integer, JButton> entry : botonesCasillas.entrySet()) {
+                if (entry.getKey() < 101) { // Solo casillas del tablero
+                    JButton botonCasilla = entry.getValue();
+                    if (botonCasilla.getIcon() == null) { // Si está vacía
+                        botonCasilla.setVisible(false);
+                        botonCasilla.setEnabled(false);
+                    }
+                }
+            }
+
+            // 2. Mostrar y resaltar solo las casillas deseadas
+            for (int idCasilla : idsDeCasillasAMostrar) {
+                JButton botonAMostrar = botonesCasillas.get(idCasilla);
+                if (botonAMostrar != null) {
+                    botonAMostrar.setVisible(true);
+                    botonAMostrar.setEnabled(true);
+                    botonAMostrar.setContentAreaFilled(true);
+                    botonAMostrar.setBackground(new Color(255, 255, 0, 120));
+                    botonAMostrar.setBorder(javax.swing.BorderFactory.createLineBorder(Color.ORANGE, 1));
+                }
+            }
+            repaint();
+        });
     }
 
     /**

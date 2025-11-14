@@ -6,6 +6,7 @@ package com.mycompany.parchismvc.View;
 
 import com.mycompany.parchismvc.Controller.Controlador;
 import com.mycompany.parchismvc.Model.ColorJugador;
+import com.mycompany.parchismvc.Model.Ficha;
 import com.mycompany.parchismvc.Model.Jugador;
 import com.mycompany.parchismvc.Model.Sala;
 import java.util.List;
@@ -56,6 +57,13 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
         btnTirarDado.addActionListener(e -> {
             if (controlador != null) {
                 controlador.tirar(miId); // Llamamos al método correcto con el ID del jugador
+                
+                // --- EJEMPLO DE NUEVA FUNCIONALIDAD ---
+                // Aquí puedes añadir la lógica para pintar casillas.
+                // Por ejemplo, pintar las casillas 85 y 86.
+                // NOTA: Necesitarás un método público en FondoBGTablero para hacer esto limpiamente.
+                // Por ahora, lo hacemos directamente para ilustrar.
+                JPTablero.mostrarCasillasDestino(85, 86);
             }
         });
     }
@@ -298,7 +306,7 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JPanel JPTablero;
+    private com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero JPTablero;
     private javax.swing.JButton btnAbandonar;
     private javax.swing.JButton btnTirarDado;
     private javax.swing.JPanel jPanel1;
