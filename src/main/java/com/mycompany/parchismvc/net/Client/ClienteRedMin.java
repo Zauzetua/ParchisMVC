@@ -39,6 +39,10 @@ public class ClienteRedMin implements Closeable {
         lector.start();
     }
 
+    public boolean isReady(){
+        return socket != null && socket.isConnected() && out != null && in != null;
+    }
+
     private void bucleLectura(){
         try {
             while (!Thread.currentThread().isInterrupted()){
@@ -49,6 +53,7 @@ public class ClienteRedMin implements Closeable {
     }
 
     public synchronized void enviar(Mensaje m) throws IOException {
+        if(out == null) throw new IOException("No conectado (stream no inicializado)");
         out.writeObject(m); out.flush();
     }
 

@@ -22,8 +22,8 @@ public final class Codecs {
         return new JavaSerCodec(bin, out);
       }
     }
-    // Si no es Java, asumimos JSON con framing
-    return new JsonCodec();
+    // Si no es Java, forzamos Java serialization (Jackson no disponible en entorno)
+    return new JavaSerCodec(bin, out);
   }
   private static int skipWs(BufferedInputStream bin) throws IOException {
     int c;
