@@ -321,59 +321,67 @@ public class FondoBGTablero extends ImageBackgroundPanel {
     public void actualizarEstadoFichas(Map<UUID, List<com.mycompany.parchismvc.Model.Ficha>> fichasPorJugador, Map<UUID, ColorJugador> mapaColoresJugadores) {
         SwingUtilities.invokeLater(() -> {
             limpiarResaltados(); // Limpia cualquier selección o resaltado activo.
-            this.fichasPorJugadorActuales = fichasPorJugador; // Guardamos el estado actual
-            mapaColorDeFicha.clear();
 
-            // 1. Resetear solo las casillas del tablero (1-100). Las casas no se tocan aún.
-            for (Map.Entry<Integer, JButton> entry : botonesCasillas.entrySet()) {
-                JButton botonCasilla = entry.getValue();
-                int idCasilla = entry.getKey();
-                if (idCasilla <= 100) { // Solo casillas del tablero principal y pasillos
-                    botonCasilla.setIcon(null);
+            // Creamos un mapa con las nuevas posiciones para facilitar la consulta.
+            Map<UUID, Integer> nuevasPosiciones = new HashMap<>();
+            for (Map.Entry<UUID, List<com.mycompany.parchismvc.Model.Ficha>> entry : fichasPorJugador.entrySet()) {
+                for (com.mycompany.parchismvc.Model.Ficha ficha : entry.getValue()) {
+                    if (ficha != null) {
+                        nuevasPosiciones.put(ficha.id, ficha.posicion);
+                    }
                 }
             }
 
-            // 2. Recorremos todas las fichas del estado y las (re)colocamos en su lugar.
-            for (Map.Entry<UUID, List<com.mycompany.parchismvc.Model.Ficha>> entry : fichasPorJugador.entrySet()) {
-                ColorJugador color = mapaColoresJugadores.get(entry.getKey());
-                List<com.mycompany.parchismvc.Model.Ficha> fichas = entry.getValue();
-                for (int i = 0; i < fichas.size(); i++) {
-                    com.mycompany.parchismvc.Model.Ficha ficha = fichas.get(i);
-                    if (ficha == null) {
-                        continue;
+            // Actualizamos el mapa de colores.
+            mapaColorDeFicha.clear();
+            for(Map.Entry<UUID, ColorJugador> colorEntry : mapaColoresJugadores.entrySet()){
+                mapaColorDeFicha.put(colorEntry.getKey(), colorEntry.getValue());
+            }
+
+            // Iteramos sobre las nuevas posiciones para actualizar el tablero.
+            for (Map.Entry<UUID, Integer> newState : nuevasPosiciones.entrySet()) {
+                UUID fichaId = newState.getKey();
+                int newPos = newState.getValue();
+                int oldPos = mapaPosicionFichas.getOrDefault(fichaId, 0); // Asumimos que empieza en casa (0) si no existe.
+
+                if (newPos == oldPos) continue; // Si no se movió, no hacemos nada.
+
+                // Obtenemos los botones de origen y destino.
+                int indiceFicha = getIndiceDeFicha(fichaId, fichasPorJugador);
+                ColorJugador color = mapaColorDeFicha.get(fichaId);
+                JButton casaFicha = botonesCasillas.get(getBotonCasaIdDeFicha(fichaId, indiceFicha, color));
+
+                JButton botonOrigen = (oldPos == 0) ? casaFicha : botonesCasillas.get(oldPos);
+                JButton botonDestino = (newPos == 0) ? casaFicha : botonesCasillas.get(newPos);
+
+                if (botonOrigen != null && botonDestino != null) {
+                    Icon icon = botonOrigen.getIcon();
+
+                    // Si el icono de origen es un hueco, significa que la ficha ya se movió
+                    // (por ejemplo, en una captura), así que buscamos el icono en su casa.
+                    if (icon == null || icon instanceof IconoDeHueco) {
+                        icon = casaFicha.getIcon();
                     }
 
-                    UUID idFicha = ficha.id;
-                    int idCasillaActual = ficha.posicion;
-                    int indiceFicha = i; // Deducimos el índice por el orden en la lista.
+                    // Movemos el icono al destino.
+                    botonDestino.setIcon(icon);
 
-                    // Actualizamos los mapas locales
-                    mapaPosicionFichas.put(idFicha, idCasillaActual);
-                    mapaColorDeFicha.put(idFicha, color);
-
-                    // Obtenemos el icono de la ficha desde su botón de casa original (que nunca cambia)
-                    JButton casaOriginal = botonesCasillas.get(getBotonCasaIdDeFicha(idFicha, indiceFicha, color));
-                    
-                    // Si la posición es 0, la ficha está en su casa. El destino es el botón de la casa.
-                    // Si no, el destino es la casilla del tablero.
-                    JButton destino = (idCasillaActual == 0) 
-                                      ? casaOriginal 
-                                      : botonesCasillas.get(idCasillaActual);
-                    
-                    if (casaOriginal != null && destino != null) { // Si el destino es válido
-                        // Colocamos el icono de la ficha (que siempre está en el botón de casa) en su nueva posición
-                        if (idCasillaActual == 0) { // La ficha está o vuelve a casa
-                            // Nos aseguramos de que el icono de la ficha esté en su botón de casa.
-                            casaOriginal.setIcon(getScaledIcon(getIconNameForFicha(getBotonCasaIdDeFicha(idFicha, indiceFicha, color)), casaOriginal.getWidth(), casaOriginal.getHeight()));
-                        } else { // La ficha se mueve a una casilla del tablero
-                            destino.setIcon(casaOriginal.getIcon());
-                            destino.setVisible(true);
-                            // Ahora que la ficha se ha movido, dejamos un hueco en su casa de origen.
-                            casaOriginal.setIcon(new IconoDeHueco(casaOriginal.getWidth() - 10, casaOriginal.getHeight() - 15));
+                    // Limpiamos el origen.
+                    if (botonOrigen != botonDestino) { // Evitar borrar el icono si origen y destino son el mismo (vuelve a casa)
+                        if (oldPos == 0) { // Si salía de casa, la casa ahora tiene un hueco.
+                             // No hacemos nada aquí, porque el icono ya se movió.
+                        } else { // Si salía de una casilla del tablero, la casilla queda vacía.
+                            botonOrigen.setIcon(null);
                         }
                     }
                 }
             }
+
+            // Finalmente, actualizamos el mapa de posiciones y el estado de las fichas.
+            mapaPosicionFichas.clear();
+            mapaPosicionFichas.putAll(nuevasPosiciones);
+            this.fichasPorJugadorActuales = fichasPorJugador;
+
             repaint();
         });
     }
@@ -705,7 +713,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
     }
 
     private String getIconNameForFicha(int idFicha) {
-        if (idFicha >= 101 && idFicha <= 104) {
+        if (idFicha >= 101 && idFicha <= 104) { //ROJO
             return "MChiquitaFRojo.png";
         } else if (idFicha >= 105 && idFicha <= 108) {
             return "MChiquitaFAzul.png";
