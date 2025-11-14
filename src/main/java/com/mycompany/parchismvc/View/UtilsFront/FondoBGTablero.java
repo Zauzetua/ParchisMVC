@@ -303,9 +303,9 @@ public class FondoBGTablero extends ImageBackgroundPanel {
 
     /**
      * Oculta todas las casillas del tablero y resalta las que se pasen como parámetro.
-     * @param idsDeCasillasAMostrar Los IDs de las casillas a resaltar.
+     * @param cantidadDeCasillas La cantidad de casillas a resaltar desde el inicio.
      */
-    public void mostrarCasillasDestino(int... idsDeCasillasAMostrar) {
+    public void mostrarCasillasDestino(int cantidadDeCasillas) {
         SwingUtilities.invokeLater(() -> {
             // 1. Ocultar todas las casillas del tablero (las que no tienen ficha)
             for (Map.Entry<Integer, JButton> entry : botonesCasillas.entrySet()) {
@@ -319,8 +319,8 @@ public class FondoBGTablero extends ImageBackgroundPanel {
             }
 
             // 2. Mostrar y resaltar solo las casillas deseadas
-            for (int idCasilla : idsDeCasillasAMostrar) {
-                JButton botonAMostrar = botonesCasillas.get(idCasilla);
+            for (int i = 1; i <= cantidadDeCasillas; i++) {
+                JButton botonAMostrar = botonesCasillas.get(i);
                 if (botonAMostrar != null) {
                     botonAMostrar.setVisible(true);
                     botonAMostrar.setEnabled(true);

@@ -57,13 +57,6 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
         btnTirarDado.addActionListener(e -> {
             if (controlador != null) {
                 controlador.tirar(miId); // Llamamos al método correcto con el ID del jugador
-                
-                // --- EJEMPLO DE NUEVA FUNCIONALIDAD ---
-                // Aquí puedes añadir la lógica para pintar casillas.
-                // Por ejemplo, pintar las casillas 85 y 86.
-                // NOTA: Necesitarás un método público en FondoBGTablero para hacer esto limpiamente.
-                // Por ahora, lo hacemos directamente para ilustrar.
-                JPTablero.mostrarCasillasDestino(85, 86);
             }
         });
     }
@@ -264,6 +257,9 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
                 mensaje += " (¡Turno extra!)";
             }
             lblNumeroDado.setText(mensaje);
+
+            // ¡AQUÍ ESTÁ LA MAGIA! Pintamos la cantidad de casillas que indica el dado.
+            ((com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero) JPTablero).mostrarCasillasDestino(valor);
         });
     }
     @Override
@@ -306,7 +302,7 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero JPTablero;
+    private javax.swing.JPanel JPTablero;
     private javax.swing.JButton btnAbandonar;
     private javax.swing.JButton btnTirarDado;
     private javax.swing.JPanel jPanel1;
