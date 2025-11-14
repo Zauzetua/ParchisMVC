@@ -324,13 +324,13 @@ public class FondoBGTablero extends ImageBackgroundPanel {
             this.fichasPorJugadorActuales = fichasPorJugador; // Guardamos el estado actual
             mapaColorDeFicha.clear();
 
-            // 1. Resetear el tablero: Quitar todos los iconos de las casillas del tablero (1-100)
-            // y poner huecos en TODAS las casas (101-116).
+            // 1. Resetear el tablero: poner huecos en las casas y limpiar casillas del tablero.
             for (int i = 1; i <= 116; i++) {
                 JButton botonCasilla = botonesCasillas.get(i);
                 if (botonCasilla != null) {
                     if (i > 100) { // Si es una casa
                         botonCasilla.setIcon(new IconoDeHueco(botonCasilla.getWidth() - 10, botonCasilla.getHeight() - 15));
+                        botonCasilla.setVisible(true); // Aseguramos que las casas base sean visibles
                     } else { // Si es una casilla del tablero
                         botonCasilla.setIcon(null);
                     }
@@ -367,6 +367,12 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                     if (casaOriginal != null && destino != null) { // Si el destino es válido
                         // Colocamos el icono de la ficha (que siempre está en el botón de casa) en su nueva posición
                         destino.setIcon(casaOriginal.getIcon());
+                        
+                        // Si la ficha se mueve a una casilla del tablero (no a casa), nos aseguramos de que el botón sea visible.
+                        if (idCasillaActual > 0 && idCasillaActual <= 100) {
+                            destino.setVisible(true);
+                            destino.setEnabled(true);
+                        }
                     }
                 }
             }
@@ -448,31 +454,11 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 if (botonFichaSeleccionada == boton) {
                     limpiarResaltados();
                 } else {
-                    int idCasillaClicada = Integer.parseInt(boton.getActionCommand());
-                    boolean esOtraFicha = boton.getIcon() != null && !(boton.getIcon() instanceof IconoDeHueco);
-                    UUID idFichaSeleccionada = getFichaEnCasilla(Integer.parseInt(botonFichaSeleccionada.getActionCommand()));
-                    UUID idFichaClicada = getFichaEnCasilla(idCasillaClicada);
-                    int idCasillaOrigen = Integer.parseInt(botonFichaSeleccionada.getActionCommand());
-
-                    // PRIORIDAD 1: Cambiar selección a otra ficha del MISMO color.
-                    if (esOtraFicha && idFichaSeleccionada != null && idFichaClicada != null &&
-                        getColorDeFicha(idFichaSeleccionada) == getColorDeFicha(idFichaClicada)) {
-                        
+                    // Lógica simplificada: mover la ficha seleccionada al botón de destino clicado.
+                    teletransportarFicha(botonFichaSeleccionada, boton, () -> {
+                        // Una vez movida, la nueva posición se convierte en la selección.
                         seleccionarFicha(boton);
-                        System.out.println("Selección cambiada a otra ficha del mismo color.");
-
-                    // PRIORIDAD 2: Si se hace clic en otra ficha que está en su casa (fuera del tablero), cambiamos la selección.
-                    } else if (esOtraFicha && idCasillaClicada >= 101) {
-                        seleccionarFicha(boton);
-                        System.out.println("Selección cambiada a ficha en casa.");
-                    // PRIORIDAD 3: Si el destino es una casilla de movimiento válida (visible y habilitada), intentamos mover/comer. Esto incluye sacar de casa.
-                    } else if (boton.isVisible() && boton.isEnabled() && (idCasillaOrigen >= 101 || idCasillaOrigen < 101)) {
-                        ejecutarMovimientoOCaptura(boton);
-                    // PRIORIDAD 4: Si no es un destino válido, comprobamos si es cualquier otra ficha (enemiga) para cambiar la selección.
-                    } else if (esOtraFicha) {
-                        seleccionarFicha(boton);
-                        System.out.println("Selección cambiada a otra ficha (posiblemente enemiga).");
-                    }
+                    });
                 }
             }
         };
