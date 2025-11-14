@@ -50,10 +50,10 @@ public class ServicioJuego {
      * que empiezan las fichas al salir de la base.
      */
     private final Map<ColorJugador, Integer> inicioPorColor = Map.of(
-            ColorJugador.ROJO, 0,
-            ColorJugador.AZUL, 13,
-            ColorJugador.VERDE, 26,
-            ColorJugador.AMARILLO, 39);
+            ColorJugador.ROJO, 39,
+            ColorJugador.AZUL, 22,
+            ColorJugador.VERDE, 56,
+            ColorJugador.AMARILLO, 5);
 
     /**
      * Ultimo valor tirado por cada jugador en su turno (si ya ha tirado)
