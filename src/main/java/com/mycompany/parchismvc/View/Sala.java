@@ -12,12 +12,14 @@ import javax.swing.*;
 import java.awt.*;
 import java.util.EnumMap;
 import java.util.Map;
+import javax.swing.SwingUtilities;
 
-public class Sala extends JFrame {
+public class Sala extends JFrame implements GameEvents {
     private Controlador controlador;
     private UUID miId;
     private JLabel lblEstado;
     private JButton btnReady, btnSalir, btnTimerLeft, btnTimerRight;
+    private GameEvents gameEvents;
     private JLabel lblTimerValue;
     private JPanel panelColors;
     private Map<ColorJugador, ColorButton> colorButtons = new EnumMap<>(ColorJugador.class);
@@ -32,15 +34,7 @@ public class Sala extends JFrame {
 
     private void configurarPostRegistro(){
         if(controlador!=null){
-            controlador.setEvents(new GameEvents(){
-                @Override public void onConectado(String host,int puerto,String salaId){ }
-                @Override public void onRegistrado(UUID jugadorId){ }
-                @Override public void onEstado(com.mycompany.parchismvc.Model.Sala sala, UUID turnoDe, UUID yo){ SwingUtilities.invokeLater(() -> actualizarJugadores(sala, turnoDe, yo)); }
-                @Override public void onCuentaAtras(int segundos, com.mycompany.parchismvc.Model.Sala sala){ SwingUtilities.invokeLater(() -> lblEstado.setText("Cuenta atras: "+segundos)); }
-                @Override public void onResultado(boolean ok,String mensaje){ SwingUtilities.invokeLater(() -> lblEstado.setText(mensaje)); }
-                @Override public void onDado(UUID jugadorId,int valor){ }
-                @Override public void onError(String razon){ SwingUtilities.invokeLater(() -> lblEstado.setText("Error: "+razon)); }
-            });
+            controlador.setEvents(this);
         }
     }
 
@@ -94,8 +88,9 @@ public class Sala extends JFrame {
         
         // Si el estado de la sala cambia a JUGANDO, abrimos la ventana del juego.
         if (sala.estado == com.mycompany.parchismvc.Model.EstadoSala.JUGANDO) {
-            Juego juegoFrame = new Juego();
-            juegoFrame.actualizarJugadores(sala.jugadores, turnoDe); // Pasamos la lista de jugadores y el turno
+            Juego juegoFrame = new Juego(controlador, miId);
+            controlador.setEvents(juegoFrame); // ¡IMPORTANTE! Transferir el control de eventos a la nueva ventana.
+            juegoFrame.actualizarJugadores(sala.jugadores, turnoDe, miId); // Pasamos la lista de jugadores, el turno y el ID local
             juegoFrame.setVisible(true);
             this.dispose(); // Cerramos la ventana de la sala
             return; // Salimos del método para no actualizar la UI de la sala que ya se cerró
@@ -108,6 +103,39 @@ public class Sala extends JFrame {
         lblEstado.setText("Estado: "+sala.estado); boolean lobby = sala.estado == com.mycompany.parchismvc.Model.EstadoSala.ESPERANDO; setLobbyControlsEnabled(lobby);
     }
     private void setLobbyControlsEnabled(boolean enabled){ btnTimerLeft.setEnabled(enabled); btnTimerRight.setEnabled(enabled); for(var cb: colorButtons.values()) cb.setEnabled(enabled && !cb.isTaken()); btnReady.setEnabled(enabled); }
+    
+    public GameEvents getGameEvents() {
+        return this;
+    }
+
+    @Override
+    public void onConectado(String host, int puerto, String salaId) {}
+
+    @Override
+    public void onRegistrado(UUID jugadorId) {}
+
+    @Override
+    public void onEstado(com.mycompany.parchismvc.Model.Sala sala, UUID turnoDe, UUID yo) {
+        SwingUtilities.invokeLater(() -> actualizarJugadores(sala, turnoDe, yo));
+    }
+
+    @Override
+    public void onCuentaAtras(int segundos, com.mycompany.parchismvc.Model.Sala sala) {
+        SwingUtilities.invokeLater(() -> lblEstado.setText("Cuenta atras: " + segundos));
+    }
+
+    @Override
+    public void onResultado(boolean ok, String mensaje) {
+        SwingUtilities.invokeLater(() -> lblEstado.setText(mensaje));
+    }
+
+    @Override
+    public void onDado(UUID jugadorId, int valor) {}
+
+    @Override
+    public void onError(String razon) {
+        SwingUtilities.invokeLater(() -> lblEstado.setText("Error: " + razon));
+    }
 
     // === Inner components ===
     private static class PlayerSlotPanel extends JPanel {

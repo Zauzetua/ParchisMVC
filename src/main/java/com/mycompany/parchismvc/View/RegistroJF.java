@@ -44,6 +44,7 @@ public class RegistroJF extends javax.swing.JFrame {
                     for(var c: AvataresPanel.getComponents()) c.setEnabled(false);
                     // Abrir la sala (lobby) y transferir eventos
                     com.mycompany.parchismvc.View.Sala salaFrame = new com.mycompany.parchismvc.View.Sala(controlador, jugadorId); // abrir lobby
+                    controlador.setEvents(salaFrame.getGameEvents()); // ¡IMPORTANTE! Transferir el control de eventos a la nueva ventana.
                     salaFrame.setLocationRelativeTo(RegistroJF.this);
                     salaFrame.setVisible(true);
                     RegistroJF.this.setVisible(false); // ocultar registro

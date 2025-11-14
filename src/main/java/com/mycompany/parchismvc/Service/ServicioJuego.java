@@ -510,4 +510,38 @@ public class ServicioJuego {
         sala().tiempoPorTurno = segundos;
     }
 
+    /**
+     * Desconecta a un jugador de la sala, eliminándolo a él y a sus fichas.
+     * Si el juego está en curso y era su turno, lo avanza.
+     * @param jugadorId El ID del jugador a desconectar.
+     * @return Un mensaje indicando el resultado.
+     */
+    public String desconectarJugador(UUID jugadorId) {
+        Sala s = sala();
+        Jugador jugadorADesconectar = buscarJugador(jugadorId);
+        if (jugadorADesconectar == null) {
+            return "Jugador no encontrado.";
+        }
+
+        boolean eraTurnoDelDesconectado = false;
+        if (s.estado == EstadoSala.JUGANDO && jugadorActual() != null) {
+            eraTurnoDelDesconectado = jugadorActual().id.equals(jugadorId);
+        }
+
+        // Eliminar al jugador y sus fichas
+        s.jugadores.remove(jugadorADesconectar);
+        s.fichasPorJugador.remove(jugadorId);
+
+        if (s.estado == EstadoSala.JUGANDO) {
+            // Si el índice de turno ahora está fuera de los límites, ajústalo.
+            if (s.indiceTurno >= s.jugadores.size()) {
+                s.indiceTurno = 0;
+            } else if (eraTurnoDelDesconectado) {
+                // Si era el turno del que se fue, no necesitamos incrementar el índice,
+                // porque el siguiente jugador ahora ocupa el `indiceTurno` actual.
+                // El estado se refrescará y mostrará al nuevo jugador en turno.
+            }
+        }
+        return "Jugador " + jugadorADesconectar.nombre + " se ha desconectado.";
+    }
 }

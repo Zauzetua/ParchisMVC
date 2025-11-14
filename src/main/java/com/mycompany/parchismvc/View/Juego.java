@@ -4,29 +4,60 @@
  */
 package com.mycompany.parchismvc.View;
 
+import com.mycompany.parchismvc.Controller.Controlador;
+import com.mycompany.parchismvc.Model.ColorJugador;
 import com.mycompany.parchismvc.Model.Jugador;
+import com.mycompany.parchismvc.Model.Sala;
 import java.util.List;
+import java.util.UUID;
+import javax.swing.SwingUtilities;
 
 /**
  *
  * @author galle
  */
-public class Juego extends javax.swing.JFrame {
+public class Juego extends javax.swing.JFrame implements GameEvents {
+    
+    private Controlador controlador;
+    private UUID miId;
 
     /**
      * Creates new form Juego
      */
-    public Juego() {
+    public Juego(Controlador controlador, UUID miId) {
+        this.controlador = controlador;
+        this.miId = miId;
         initComponents();
+        wireEvents();
         // Centra la ventana en la pantalla
         setLocationRelativeTo(null);
         
         // Ocultar etiquetas de jugador inicialmente
-        lblJugador1.setVisible(false);
-        lblJugador2.setVisible(false);
-        lblJugador3.setVisible(false);
-        lblJugador4.setVisible(false);
+        lblJugadorRojo.setText("");
+        lblJugadorAzul.setText("");
+        lblJugadorVerde.setText("");
+        lblJugadorAmarillo.setText("");
+        btnTirarDado.setEnabled(false); // Desactivar el botón de tirar al inicio
+        
+        if (this.controlador != null) {
+            this.controlador.setEvents(this);
+        }
+    }
+    
+    private void wireEvents() {
+        btnAbandonar.addActionListener(e -> {
+            if (controlador != null) {
+                controlador.desconectar();
+            }
+            this.dispose(); // Cierra la ventana del juego
+            System.exit(0); // Asegura que la aplicación se cierre completamente
+        });
 
+        btnTirarDado.addActionListener(e -> {
+            if (controlador != null) {
+                controlador.tirar(miId); // Llamamos al método correcto con el ID del jugador
+            }
+        });
     }
 
     /**
@@ -40,12 +71,14 @@ public class Juego extends javax.swing.JFrame {
 
         jPanel1 = new javax.swing.JPanel();
         JPTablero = new com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero();
-        lblJugador1 = new javax.swing.JLabel();
-        lblJugador2 = new javax.swing.JLabel();
-        lblJugador3 = new javax.swing.JLabel();
-        lblJugador4 = new javax.swing.JLabel();
         lblNumeroDado = new javax.swing.JLabel();
         lblNickName = new javax.swing.JLabel();
+        btnTirarDado = new javax.swing.JButton();
+        btnAbandonar = new javax.swing.JButton();
+        lblJugadorRojo = new javax.swing.JLabel();
+        lblJugadorVerde = new javax.swing.JLabel();
+        lblJugadorAzul = new javax.swing.JLabel();
+        lblJugadorAmarillo = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setPreferredSize(new java.awt.Dimension(1022, 521));
@@ -64,70 +97,88 @@ public class Juego extends javax.swing.JFrame {
             .addGap(0, 354, Short.MAX_VALUE)
         );
 
-        lblJugador1.setText("jLabel1");
-
-        lblJugador2.setText("jLabel2");
-
-        lblJugador3.setText("jLabel3");
-
-        lblJugador4.setText("jLabel4");
-
         lblNumeroDado.setText("jLabel5");
 
         lblNickName.setText("jLabel6");
+
+        btnTirarDado.setText("Tirar Dado");
+
+        btnAbandonar.setText("Abandonar");
+
+        lblJugadorRojo.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        lblJugadorRojo.setForeground(new java.awt.Color(255, 255, 255));
+        lblJugadorRojo.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        lblJugadorRojo.setText("ROJO");
+
+        lblJugadorVerde.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        lblJugadorVerde.setForeground(new java.awt.Color(255, 255, 255));
+        lblJugadorVerde.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        lblJugadorVerde.setText("VERDE");
+
+        lblJugadorAzul.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        lblJugadorAzul.setForeground(new java.awt.Color(255, 255, 255));
+        lblJugadorAzul.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        lblJugadorAzul.setText("AZUL");
+
+        lblJugadorAmarillo.setFont(new java.awt.Font("Segoe UI", 1, 12)); // NOI18N
+        lblJugadorAmarillo.setForeground(new java.awt.Color(255, 255, 255));
+        lblJugadorAmarillo.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        lblJugadorAmarillo.setText("AMARILLO");
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
+                .addGap(48, 48, 48)
+                .addComponent(lblNickName, javax.swing.GroupLayout.PREFERRED_SIZE, 161, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(148, 148, 148)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addComponent(lblJugadorVerde, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(168, 168, 168)
+                        .addComponent(lblJugadorAmarillo, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                        .addGroup(jPanel1Layout.createSequentialGroup()
+                            .addComponent(btnTirarDado)
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(btnAbandonar))
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addGap(180, 180, 180)
-                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addComponent(lblJugador1, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(lblJugador3, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                            .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addGap(48, 48, 48)
-                                .addComponent(lblNickName, javax.swing.GroupLayout.PREFERRED_SIZE, 161, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                        .addGap(57, 57, 57)
-                        .addComponent(JPTablero, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addGap(44, 44, 44)
-                                .addComponent(lblJugador2, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addGap(58, 58, 58)
-                                .addComponent(lblJugador4, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addGap(491, 491, 491)
-                        .addComponent(lblNumeroDado, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(245, Short.MAX_VALUE))
+                                .addComponent(lblJugadorRojo, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(168, 168, 168)
+                                .addComponent(lblJugadorAzul, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(JPTablero, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                .addContainerGap(257, Short.MAX_VALUE))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(lblNumeroDado, javax.swing.GroupLayout.PREFERRED_SIZE, 230, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(340, 340, 340))
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addGap(23, 23, 23)
                 .addComponent(lblNumeroDado)
-                .addGap(26, 26, 26)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(lblJugadorRojo)
+                    .addComponent(lblJugadorAzul))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(JPTablero, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(103, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(lblJugadorVerde)
+                    .addComponent(lblJugadorAmarillo))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 23, Short.MAX_VALUE)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(btnTirarDado)
+                    .addComponent(btnAbandonar))
+                .addGap(29, 29, 29))
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(86, 86, 86)
-                .addComponent(lblJugador1)
-                .addGap(93, 93, 93)
+                .addGap(195, 195, 195)
                 .addComponent(lblNickName)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(lblJugador3)
-                .addGap(130, 130, 130))
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addGap(81, 81, 81)
-                .addComponent(lblJugador2)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(lblJugador4)
-                .addGap(126, 126, 126))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
@@ -144,32 +195,71 @@ public class Juego extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    public void actualizarJugadores(List<Jugador> jugadores, java.util.UUID turnoDe) {
-        // Asumo que tienes una lista de JLabels para los jugadores
-        javax.swing.JLabel[] labels = {lblJugador1, lblJugador2, lblJugador3, lblJugador4};
-
-        // Ocultar todas las etiquetas primero
-        for (javax.swing.JLabel label : labels) {
-            label.setVisible(false);
-        }
+    public void actualizarJugadores(List<Jugador> jugadores, UUID turnoDe, UUID yo) {
+        // Limpiar todas las etiquetas de las bases
+        lblJugadorRojo.setText("");
+        lblJugadorAzul.setText("");
+        lblJugadorVerde.setText("");
+        lblJugadorAmarillo.setText("");
         
         lblNickName.setText(""); // Limpiar el nombre del turno anterior
         
-        // Actualizar y mostrar las etiquetas para los jugadores existentes
-        for (int i = 0; i < jugadores.size(); i++) {
-            if (i < labels.length) {
-                Jugador jugador = jugadores.get(i);
-                // La clase Jugador tiene un campo público 'nombre'
-                labels[i].setText(jugador.nombre);
-                labels[i].setVisible(true);
-
-                // Si este es el jugador en turno, actualiza lblNickName
-                if (turnoDe != null && turnoDe.equals(jugador.id)) {
-                    lblNickName.setText("Turno de: " + jugador.nombre);
+        // Asignar nombres a las etiquetas de color correspondientes
+        for (Jugador jugador : jugadores) {
+            // Poner el nombre en la base de su color
+            if (jugador.color != null) {
+                switch (jugador.color) {
+                    case ROJO -> lblJugadorRojo.setText(jugador.nombre);
+                    case AZUL -> lblJugadorAzul.setText(jugador.nombre);
+                    case VERDE -> lblJugadorVerde.setText(jugador.nombre);
+                    case AMARILLO -> lblJugadorAmarillo.setText(jugador.nombre);
                 }
+            }
+
+            // Si este es el jugador en turno, actualiza lblNickName
+            if (turnoDe != null && turnoDe.equals(jugador.id)) {
+                lblNickName.setText("Turno de: " + jugador.nombre);
+            }
+
+            // Activar el botón de tirar dado solo si es mi turno
+            if (yo != null && turnoDe != null) {
+                btnTirarDado.setEnabled(yo.equals(turnoDe));
             }
         }
     }
+
+    @Override
+    public void onConectado(String host, int puerto, String salaId) {
+        // No es relevante en esta pantalla
+    }
+
+    @Override
+    public void onRegistrado(UUID jugadorId) {
+        // No es relevante en esta pantalla
+    }
+
+    @Override
+    public void onEstado(Sala sala, UUID turnoDe, UUID yo) {
+        // Este evento actualiza la UI del juego cuando hay cambios
+        SwingUtilities.invokeLater(() -> actualizarJugadores(sala.jugadores, turnoDe, this.miId));
+    }
+
+    @Override
+    public void onCuentaAtras(int segundos, Sala sala) { }
+    @Override
+    public void onResultado(boolean ok, String mensaje) { }
+    @Override
+    public void onDado(UUID jugadorId, int valor) {
+        SwingUtilities.invokeLater(() -> {
+            String mensaje = "Resultado del dado: " + valor;
+            if (valor == 6) {
+                mensaje += " (¡Turno extra!)";
+            }
+            lblNumeroDado.setText(mensaje);
+        });
+    }
+    @Override
+    public void onError(String razon) { }
     
 
     /**
@@ -202,18 +292,20 @@ public class Juego extends javax.swing.JFrame {
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
-                new Juego().setVisible(true);
+                new Juego(null, null).setVisible(true); // Para propósitos de testing
             }
         });
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel JPTablero;
+    private javax.swing.JButton btnAbandonar;
+    private javax.swing.JButton btnTirarDado;
     private javax.swing.JPanel jPanel1;
-    private javax.swing.JLabel lblJugador1;
-    private javax.swing.JLabel lblJugador2;
-    private javax.swing.JLabel lblJugador3;
-    private javax.swing.JLabel lblJugador4;
+    private javax.swing.JLabel lblJugadorAmarillo;
+    private javax.swing.JLabel lblJugadorAzul;
+    private javax.swing.JLabel lblJugadorRojo;
+    private javax.swing.JLabel lblJugadorVerde;
     private javax.swing.JLabel lblNickName;
     private javax.swing.JLabel lblNumeroDado;
     // End of variables declaration//GEN-END:variables
