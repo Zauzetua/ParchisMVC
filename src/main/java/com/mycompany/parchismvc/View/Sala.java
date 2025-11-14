@@ -91,6 +91,16 @@ public class Sala extends JFrame {
 
     private void actualizarJugadores(com.mycompany.parchismvc.Model.Sala sala, UUID turnoDe, UUID yo){
         if(sala==null) return; int tiempo = sala.tiempoPorTurno; if(tiempo==30) timerIndex=0; else if(tiempo==15) timerIndex=1; lblTimerValue.setText(tiempo+" SG");
+        
+        // Si el estado de la sala cambia a JUGANDO, abrimos la ventana del juego.
+        if (sala.estado == com.mycompany.parchismvc.Model.EstadoSala.JUGANDO) {
+            Juego juegoFrame = new Juego();
+            juegoFrame.actualizarJugadores(sala.jugadores); // Pasamos la lista de jugadores
+            juegoFrame.setVisible(true);
+            this.dispose(); // Cerramos la ventana de la sala
+            return; // Salimos del método para no actualizar la UI de la sala que ya se cerró
+        }
+        
         for(var cb: colorButtons.values()) cb.setTaken(false);
         for(Jugador j: sala.jugadores){ if(j.color!=null){ var btn = colorButtons.get(j.color); if(btn!=null) btn.setTaken(true); } }
         for(int i=0;i<playerSlots.length;i++){ PlayerSlotPanel slot = playerSlots[i]; if(i < sala.jugadores.size()){ Jugador j = sala.jugadores.get(i); slot.update(j, j.id.equals(yo), turnoDe!=null && j.id.equals(turnoDe)); } else { slot.clear(); } }

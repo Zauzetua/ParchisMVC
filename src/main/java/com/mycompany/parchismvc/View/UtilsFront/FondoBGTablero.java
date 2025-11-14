@@ -715,7 +715,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
 
     private ImageIcon getScaledIcon(String fileName, int targetWidth, int targetHeight) {
         try {
-            File imgFile = new File("src/main/java/Assets/" + fileName);
+            File imgFile = new File("src/main/resources/Assets/" + fileName);
             if (imgFile.exists()) {
                 ImageIcon originalIcon = new ImageIcon(imgFile.getAbsolutePath());
                 Image originalImage = originalIcon.getImage();
@@ -742,7 +742,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
 
     private void loadBoardFromDisk() {
         try {
-            File imgFile = new File("src/main/java/Assets/TABLERO.png");
+            File imgFile = new File("src/main/resources/Assets/TABLERO.png");
             if (imgFile.exists()) {
                 super.setImage(javax.imageio.ImageIO.read(imgFile));
             } else {
