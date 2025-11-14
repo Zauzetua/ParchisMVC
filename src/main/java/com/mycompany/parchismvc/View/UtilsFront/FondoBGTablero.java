@@ -92,6 +92,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
     private final Map<UUID, Integer> mapaPosicionFichas = new HashMap<>();
     private final Map<UUID, ColorJugador> mapaColorDeFicha = new HashMap<>();
     private Map<UUID, List<com.mycompany.parchismvc.Model.Ficha>> fichasPorJugadorActuales = new HashMap<>();
+    private final Map<UUID, ColorJugador> mapaColoresJugadores = new HashMap<>();
 
     // Mapa que define la geometría del tablero. Asocia un ID de casilla a su Rectángulo (x, y, ancho, alto)
     private static final Map<Integer, Rectangle> mapaCoordenadas = new HashMap<>();
@@ -317,70 +318,86 @@ public class FondoBGTablero extends ImageBackgroundPanel {
      * entre jugadores.
      *
      * @param fichasPorJugador Un mapa que contiene la lista de fichas para cada ID de jugador.
+     * @param nuevosColores Un mapa opcional para actualizar los colores de los jugadores.
      */
-    public void actualizarEstadoFichas(Map<UUID, List<com.mycompany.parchismvc.Model.Ficha>> fichasPorJugador, Map<UUID, ColorJugador> mapaColoresJugadores) {
+    public void actualizarEstadoFichas(Map<UUID, List<com.mycompany.parchismvc.Model.Ficha>> fichasPorJugador, Map<UUID, ColorJugador> nuevosColores) {
         SwingUtilities.invokeLater(() -> {
             limpiarResaltados(); // Limpia cualquier selección o resaltado activo.
 
-            // Creamos un mapa con las nuevas posiciones para facilitar la consulta.
-            Map<UUID, Integer> nuevasPosiciones = new HashMap<>();
+            // Actualiza el mapa de colores interno si se proporciona uno nuevo.
+            if (nuevosColores != null) this.mapaColoresJugadores.putAll(nuevosColores);
+
+            // Mapa para saber qué casillas del tablero (1-100) estarán ocupadas
+            Map<Integer, Icon> casillasOcupadas = new HashMap<>();
+            // Mapa para saber qué casas (101-116) estarán ocupadas
+            Map<Integer, Icon> casasOcupadas = new HashMap<>();
+
+            // Mapa para rastrear las posiciones anteriores y poder limpiar solo lo necesario
+            Map<Integer, UUID> casillasAnteriores = new HashMap<>();
+
+            // 1. Pre-calcular el estado final sin tocar la UI todavía
             for (Map.Entry<UUID, List<com.mycompany.parchismvc.Model.Ficha>> entry : fichasPorJugador.entrySet()) {
-                for (com.mycompany.parchismvc.Model.Ficha ficha : entry.getValue()) {
-                    if (ficha != null) {
-                        nuevasPosiciones.put(ficha.id, ficha.posicion);
+                ColorJugador color = this.mapaColoresJugadores.get(entry.getKey());
+                List<com.mycompany.parchismvc.Model.Ficha> fichas = entry.getValue();
+                for (int i = 0; i < fichas.size(); i++) {
+                    com.mycompany.parchismvc.Model.Ficha ficha = fichas.get(i);
+                    if (ficha == null) continue;
+
+                    // Guardamos la posición anterior de la ficha para saber qué limpiar
+                    Integer posAnterior = mapaPosicionFichas.get(ficha.id);
+                    if (posAnterior != null) {
+                        casillasAnteriores.put(posAnterior, ficha.id);
+                    }
+
+                    int idCasillaActual = ficha.posicion;
+                    JButton casaOriginal = botonesCasillas.get(getBotonCasaIdDeFicha(ficha.id, i, color));
+                    if (casaOriginal == null) {
+                        System.err.println("Error: No se encontró el botón de casa para la ficha " + ficha.id + " con color " + color + ". La ficha no se dibujará.");
+                        continue;
+                    }
+
+                    ImageIcon icon = getScaledIcon(getIconNameForFicha(Integer.parseInt(casaOriginal.getActionCommand())), casaOriginal.getWidth(), casaOriginal.getHeight());
+
+                    if (idCasillaActual == 0) { // La ficha está en casa
+                        casasOcupadas.put(Integer.valueOf(casaOriginal.getActionCommand()), icon);
+                    } else { // La ficha está en el tablero
+                        casillasOcupadas.put(idCasillaActual, icon);
                     }
                 }
             }
 
-            // Actualizamos el mapa de colores.
-            mapaColorDeFicha.clear();
-            for(Map.Entry<UUID, ColorJugador> colorEntry : mapaColoresJugadores.entrySet()){
-                mapaColorDeFicha.put(colorEntry.getKey(), colorEntry.getValue());
-            }
-
-            // Iteramos sobre las nuevas posiciones para actualizar el tablero.
-            for (Map.Entry<UUID, Integer> newState : nuevasPosiciones.entrySet()) {
-                UUID fichaId = newState.getKey();
-                int newPos = newState.getValue();
-                int oldPos = mapaPosicionFichas.getOrDefault(fichaId, 0); // Asumimos que empieza en casa (0) si no existe.
-
-                if (newPos == oldPos) continue; // Si no se movió, no hacemos nada.
-
-                // Obtenemos los botones de origen y destino.
-                int indiceFicha = getIndiceDeFicha(fichaId, fichasPorJugador);
-                ColorJugador color = mapaColorDeFicha.get(fichaId);
-                JButton casaFicha = botonesCasillas.get(getBotonCasaIdDeFicha(fichaId, indiceFicha, color));
-
-                JButton botonOrigen = (oldPos == 0) ? casaFicha : botonesCasillas.get(oldPos);
-                JButton botonDestino = (newPos == 0) ? casaFicha : botonesCasillas.get(newPos);
-
-                if (botonOrigen != null && botonDestino != null) {
-                    Icon icon = botonOrigen.getIcon();
-
-                    // Si el icono de origen es un hueco, significa que la ficha ya se movió
-                    // (por ejemplo, en una captura), así que buscamos el icono en su casa.
-                    if (icon == null || icon instanceof IconoDeHueco) {
-                        icon = casaFicha.getIcon();
-                    }
-
-                    // Movemos el icono al destino.
-                    botonDestino.setIcon(icon);
-
-                    // Limpiamos el origen.
-                    if (botonOrigen != botonDestino) { // Evitar borrar el icono si origen y destino son el mismo (vuelve a casa)
-                        if (oldPos == 0) { // Si salía de casa, la casa ahora tiene un hueco.
-                             // No hacemos nada aquí, porque el icono ya se movió.
-                        } else { // Si salía de una casilla del tablero, la casilla queda vacía.
-                            botonOrigen.setIcon(null);
-                        }
+            // 2. Limpiar solo las casillas que se han desocupado
+            for (Integer posAnterior : casillasAnteriores.keySet()) {
+                // Si la posición anterior ya no está en el nuevo mapa de ocupación, la limpiamos.
+                if (!casillasOcupadas.containsKey(posAnterior) && !casasOcupadas.containsValue(botonesCasillas.get(posAnterior))) {
+                    JButton botonALimpiar = botonesCasillas.get(posAnterior);
+                    if (botonALimpiar != null) {
+                        botonALimpiar.setIcon(null);
                     }
                 }
             }
 
-            // Finalmente, actualizamos el mapa de posiciones y el estado de las fichas.
-            mapaPosicionFichas.clear();
-            mapaPosicionFichas.putAll(nuevasPosiciones);
+            // 3. Dibujar las fichas en sus nuevas posiciones
+            casillasOcupadas.forEach((idCasilla, icon) -> {
+                JButton boton = botonesCasillas.get(idCasilla);
+                if (boton != null) boton.setIcon(icon);
+            });
+
+            casasOcupadas.forEach((idCasa, icon) -> {
+                JButton boton = botonesCasillas.get(idCasa);
+                if (boton != null) boton.setIcon(icon);
+            });
+
+            // 3. Actualizar los mapas de estado internos
             this.fichasPorJugadorActuales = fichasPorJugador;
+            for (Map.Entry<UUID, List<com.mycompany.parchismvc.Model.Ficha>> entry : fichasPorJugador.entrySet()) {
+                UUID idJugador = entry.getKey();
+                for (com.mycompany.parchismvc.Model.Ficha ficha : entry.getValue()) {
+                    if (ficha == null) continue;
+                    mapaPosicionFichas.put(ficha.id, ficha.posicion); // Actualiza la posición de la ficha
+                    mapaColorDeFicha.put(ficha.id, this.mapaColoresJugadores.get(idJugador)); // Actualiza el color de la ficha
+                }
+            }
 
             repaint();
         });
@@ -440,7 +457,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
      * @return Un ActionListener con la lógica de juego.
      */
     private java.awt.event.ActionListener crearActionListenerUnificado(JButton boton) {
-        return e -> {
+        return e -> { //TODO: ESTO SE TIENE QUE CAMBIAR, NO PUEDO MOVER UNA FICHA A MI ANTOJO
             // Si hay una animación en curso, no hacemos nada para evitar conflictos.
             if (animator != null && animator.isRunning()) {
                 return;
@@ -492,13 +509,11 @@ public class FondoBGTablero extends ImageBackgroundPanel {
 
         // Preparamos la acción de mover la ficha principal. Se ejecutará sola o después de una captura.
         Runnable moverFichaPrincipal = () -> {
-            mapaPosicionFichas.put(idFichaMovida, idCasillaDestino);
             // Cuando la animación termine, el botón de destino se convertirá en la nueva ficha seleccionada.
             animarFicha(origen, destino, () -> {
-                seleccionarFicha(destino);
-                // Notificamos que el movimiento ha terminado
+                // Notificamos al controlador que el movimiento ha terminado para que lo envíe al servidor.
                 if (onMoveListener != null) {
-                    int indiceFicha = getIndiceDeFicha(idFichaMovida, fichasPorJugadorActuales);
+                    int indiceFicha = getIndiceDeFicha(idFichaMovida, fichasPorJugadorActuales); //Buscamos el indice de la ficha
                     onMoveListener.accept(indiceFicha, idCasillaDestino);
                 }
             });
@@ -713,7 +728,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
     }
 
     private String getIconNameForFicha(int idFicha) {
-        if (idFicha >= 101 && idFicha <= 104) { //ROJO
+        if (idFicha >= 101 && idFicha <= 104) { 
             return "MChiquitaFRojo.png";
         } else if (idFicha >= 105 && idFicha <= 108) {
             return "MChiquitaFAzul.png";
