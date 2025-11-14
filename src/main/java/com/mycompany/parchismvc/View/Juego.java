@@ -9,8 +9,10 @@ import com.mycompany.parchismvc.Model.ColorJugador;
 import com.mycompany.parchismvc.Model.Ficha;
 import com.mycompany.parchismvc.Model.Jugador;
 import com.mycompany.parchismvc.Model.Sala;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
 import javax.swing.SwingUtilities;
 
 /**
@@ -21,6 +23,7 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
     
     private Controlador controlador;
     private UUID miId;
+    private final Map<UUID, ColorJugador> mapaColoresJugadores = new HashMap<>();
 
     /**
      * Creates new form Juego
@@ -215,6 +218,11 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
                     case VERDE -> lblJugadorVerde.setText(jugador.nombre);
                     case AMARILLO -> lblJugadorAmarillo.setText(jugador.nombre);
                 }
+                
+                // Guardamos el color del jugador para usarlo después
+                if (jugador.id != null && jugador.color != null) {
+                    mapaColoresJugadores.put(jugador.id, jugador.color);
+                }
             }
 
             // Si este es el jugador en turno, actualiza lblNickName
@@ -258,8 +266,13 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
             }
             lblNumeroDado.setText(mensaje);
 
-            // ¡AQUÍ ESTÁ LA MAGIA! Pintamos la cantidad de casillas que indica el dado.
-            ((com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero) JPTablero).mostrarCasillasDestino(valor);
+            // Obtenemos el color del jugador que tiró el dado
+            ColorJugador colorDelTurno = mapaColoresJugadores.get(jugadorId);
+
+            if (colorDelTurno != null) {
+                // ¡AQUÍ ESTÁ LA MAGIA! Pintamos las casillas a partir de la salida de su color.
+                ((com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero) JPTablero).mostrarCasillasDestino(valor, colorDelTurno);
+            }
         });
     }
     @Override

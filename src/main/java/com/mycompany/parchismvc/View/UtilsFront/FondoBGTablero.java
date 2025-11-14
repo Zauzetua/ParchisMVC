@@ -4,6 +4,7 @@
  */
 package com.mycompany.parchismvc.View.UtilsFront;
 
+import com.mycompany.parchismvc.Model.ColorJugador;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics;
@@ -303,9 +304,10 @@ public class FondoBGTablero extends ImageBackgroundPanel {
 
     /**
      * Oculta todas las casillas del tablero y resalta las que se pasen como parámetro.
-     * @param cantidadDeCasillas La cantidad de casillas a resaltar desde el inicio.
+     * @param cantidadDeCasillas La cantidad de casillas a resaltar.
+     * @param colorDelJugador El color del jugador en turno para determinar la casilla de inicio.
      */
-    public void mostrarCasillasDestino(int cantidadDeCasillas) {
+    public void mostrarCasillasDestino(int cantidadDeCasillas, ColorJugador colorDelJugador) {
         SwingUtilities.invokeLater(() -> {
             // 1. Ocultar todas las casillas del tablero (las que no tienen ficha)
             for (Map.Entry<Integer, JButton> entry : botonesCasillas.entrySet()) {
@@ -318,10 +320,21 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 }
             }
 
+            // 2. Determinar la casilla de inicio según el color del jugador
+            int casillaDeSalida = switch (colorDelJugador) {
+                case ROJO -> 39;
+                case AZUL -> 22;
+                case VERDE -> 56;
+                case AMARILLO -> 5;
+            };
+
             // 2. Mostrar y resaltar solo las casillas deseadas
-            for (int i = 1; i <= cantidadDeCasillas; i++) {
-                JButton botonAMostrar = botonesCasillas.get(i);
+            for (int i = 0; i < cantidadDeCasillas; i++) {
+                // Calculamos el ID de la casilla, asegurando que vuelva a 1 después de 68
+                int idCasillaAMostrar = ((casillaDeSalida + i - 1) % 68) + 1;
+                JButton botonAMostrar = botonesCasillas.get(idCasillaAMostrar);
                 if (botonAMostrar != null) {
+                    System.out.println("Mostrando casilla: " + idCasillaAMostrar);
                     botonAMostrar.setVisible(true);
                     botonAMostrar.setEnabled(true);
                     botonAMostrar.setContentAreaFilled(true);
