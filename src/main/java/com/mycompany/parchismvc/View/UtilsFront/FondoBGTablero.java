@@ -324,16 +324,12 @@ public class FondoBGTablero extends ImageBackgroundPanel {
             this.fichasPorJugadorActuales = fichasPorJugador; // Guardamos el estado actual
             mapaColorDeFicha.clear();
 
-            // 1. Resetear el tablero: poner huecos en las casas y limpiar casillas del tablero.
-            for (int i = 1; i <= 116; i++) {
-                JButton botonCasilla = botonesCasillas.get(i);
-                if (botonCasilla != null) {
-                    if (i > 100) { // Si es una casa
-                        botonCasilla.setIcon(new IconoDeHueco(botonCasilla.getWidth() - 10, botonCasilla.getHeight() - 15));
-                        botonCasilla.setVisible(true); // Aseguramos que las casas base sean visibles
-                    } else { // Si es una casilla del tablero
-                        botonCasilla.setIcon(null);
-                    }
+            // 1. Resetear solo las casillas del tablero (1-100). Las casas no se tocan aún.
+            for (Map.Entry<Integer, JButton> entry : botonesCasillas.entrySet()) {
+                JButton botonCasilla = entry.getValue();
+                int idCasilla = entry.getKey();
+                if (idCasilla <= 100) { // Solo casillas del tablero principal y pasillos
+                    botonCasilla.setIcon(null);
                 }
             }
 
@@ -366,12 +362,14 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                     
                     if (casaOriginal != null && destino != null) { // Si el destino es válido
                         // Colocamos el icono de la ficha (que siempre está en el botón de casa) en su nueva posición
-                        destino.setIcon(casaOriginal.getIcon());
-                        
-                        // Si la ficha se mueve a una casilla del tablero (no a casa), nos aseguramos de que el botón sea visible.
-                        if (idCasillaActual > 0 && idCasillaActual <= 100) {
+                        if (idCasillaActual == 0) { // La ficha está o vuelve a casa
+                            // Nos aseguramos de que el icono de la ficha esté en su botón de casa.
+                            casaOriginal.setIcon(getScaledIcon(getIconNameForFicha(getBotonCasaIdDeFicha(idFicha, indiceFicha, color)), casaOriginal.getWidth(), casaOriginal.getHeight()));
+                        } else { // La ficha se mueve a una casilla del tablero
+                            destino.setIcon(casaOriginal.getIcon());
                             destino.setVisible(true);
-                            destino.setEnabled(true);
+                            // Ahora que la ficha se ha movido, dejamos un hueco en su casa de origen.
+                            casaOriginal.setIcon(new IconoDeHueco(casaOriginal.getWidth() - 10, casaOriginal.getHeight() - 15));
                         }
                     }
                 }
