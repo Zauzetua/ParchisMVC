@@ -343,45 +343,49 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 return;
             }
 
-            // --- ESCENARIO 1: NO HAY FICHA SELECCIONADA ---
-            // Si no hay nada seleccionado, solo podemos seleccionar una ficha.
+            // --- ESCENARIO 1: SELECCIONAR UNA FICHA PROPIA ---
+            // Si el botón clicado tiene una ficha (y no es un hueco)
+            // Y NO tenemos una ficha ya seleccionada...
             if (botonFichaSeleccionada == null) {
-                boolean esUnaFicha = boton.getIcon() != null && !(boton.getIcon() instanceof IconoDeHueco);
-                if (esUnaFicha) {
-                    seleccionarFicha(boton);
-                    System.out.println("Nueva ficha seleccionada en casilla: " + boton.getActionCommand());
+                if (boton.getIcon() != null && !(boton.getIcon() instanceof IconoDeHueco)) {
+                    // Seleccionamos esta nueva ficha.
+                    System.out.println("Ficha seleccionada en casilla: " + boton.getActionCommand());
+                    botonFichaSeleccionada = boton;
+                    botonFichaSeleccionada.setBorder(javax.swing.BorderFactory.createLineBorder(Color.CYAN, 3));
+                    botonFichaSeleccionada.setBorderPainted(true);
+                    resaltarVictimas(); // Mostramos posibles capturas
                 }
-            // --- ESCENARIO 2: YA HAY UNA FICHA SELECCIONADA ---
+                // --- ESCENARIO 2: EJECUTAR MOVIMIENTO O CAPTURA ---
+                // Si YA tenemos una ficha seleccionada...
             } else {
-                // Si hacemos clic en la misma ficha, la deseleccionamos.
+                // Si el usuario vuelve a hacer clic en la misma ficha, la deseleccionamos.
                 if (botonFichaSeleccionada == boton) {
-                    limpiarResaltados(); // Esto también pone botonFichaSeleccionada a null.
-                    System.out.println("Ficha deseleccionada.");
+                    limpiarResaltados();
+                    botonFichaSeleccionada = null;
                 } else {
-                    // Si hacemos clic en otro botón, verificamos si es otra ficha.
+                    int idCasillaClicada = Integer.parseInt(boton.getActionCommand());
                     boolean esOtraFicha = boton.getIcon() != null && !(boton.getIcon() instanceof IconoDeHueco);
+                    Integer idFichaSeleccionada = getFichaEnCasilla(Integer.parseInt(botonFichaSeleccionada.getActionCommand()));
+                    Integer idFichaClicada = getFichaEnCasilla(idCasillaClicada);
 
-                    if (esOtraFicha) {
-                        // Es otra ficha. Verificamos si es del mismo color.
-                        Integer idFichaSeleccionada = getFichaEnCasilla(Integer.parseInt(botonFichaSeleccionada.getActionCommand()));
-                        Integer idFichaClicada = getFichaEnCasilla(Integer.parseInt(boton.getActionCommand()));
-                        int idCasillaClicada = Integer.parseInt(boton.getActionCommand());
+                    // PRIORIDAD 1: Cambiar selección a otra ficha del MISMO color.
+                    if (esOtraFicha && idFichaSeleccionada != null && idFichaClicada != null &&
+                        getGrupoColor(idFichaSeleccionada) == getGrupoColor(idFichaClicada)) {
                         
-                        boolean esMismoColor = idFichaSeleccionada != null && idFichaClicada != null && getGrupoColor(idFichaSeleccionada) == getGrupoColor(idFichaClicada);
-                        boolean estaEnCasa = idCasillaClicada >= 101;
+                        seleccionarFicha(boton);
+                        System.out.println("Selección cambiada a otra ficha del mismo color.");
 
-                        // Si la ficha clicada es del mismo color O si está en su casa (fuera del tablero principal)
-                        if (esMismoColor || estaEnCasa) {
-                            // Simplemente cambiamos la selección a la nueva ficha.
-                            seleccionarFicha(boton);
-                            System.out.println("Selección cambiada a otra ficha.");
-                        } else {
-                            // Si es de color diferente Y está en el tablero, es una captura potencial.
-                            ejecutarMovimientoOCaptura(boton);
-                        }
-                    } else {
-                        // Si es una casilla vacía, es un movimiento.
+                    // PRIORIDAD 2: Si se hace clic en otra ficha que está en su casa (fuera del tablero), cambiamos la selección.
+                    } else if (esOtraFicha && idCasillaClicada >= 101) {
+                        seleccionarFicha(boton);
+                        System.out.println("Selección cambiada a ficha en casa.");
+                    // PRIORIDAD 3: Si el destino es una casilla de movimiento válida (visible y habilitada), intentamos mover/comer.
+                    } else if (boton.isVisible() && boton.isEnabled()) {
                         ejecutarMovimientoOCaptura(boton);
+                    // PRIORIDAD 4: Si no es un destino válido, comprobamos si es cualquier otra ficha (enemiga) para cambiar la selección.
+                    } else if (esOtraFicha) {
+                        seleccionarFicha(boton);
+                        System.out.println("Selección cambiada a otra ficha (posiblemente enemiga).");
                     }
                 }
             }
@@ -389,11 +393,8 @@ public class FondoBGTablero extends ImageBackgroundPanel {
     }
 
     /**
-     * Se ejecuta cuando ya hay una ficha seleccionada y el usuario hace clic en
-     * un destino.
-     *
-     * @param destinoBoton El botón de destino (puede estar vacío o contener una
-     * víctima).
+     * Se ejecuta cuando ya hay una ficha seleccionada y el usuario hace clic en un destino.
+     * @param destinoBoton El botón de destino (puede estar vacío o contener una víctima).
      */
     private void ejecutarMovimientoOCaptura(JButton destinoBoton) {
         final JButton origen = botonFichaSeleccionada;
@@ -602,9 +603,22 @@ public class FondoBGTablero extends ImageBackgroundPanel {
     private void limpiarResaltados() {
         // Quitamos el borde a todas las casillas.
         for (JButton boton : botonesCasillas.values()) {
-            boton.setBorderPainted(false); // Quitar borde de TODOS los botones
+            boton.setBorderPainted(false);
         }
-        botonFichaSeleccionada = null; // Deseleccionar la ficha actual
+        botonFichaSeleccionada = null;
+    }
+
+    private String getIconNameForFicha(int idFicha) {
+        if (idFicha >= 101 && idFicha <= 104) {
+            return "MChiquitaFRojo.png";
+        } else if (idFicha >= 105 && idFicha <= 108) {
+            return "MChiquitaFAzul.png";
+        } else if (idFicha >= 109 && idFicha <= 112) {
+            return "MChiquitaFVerde.png";
+        } else if (idFicha >= 113 && idFicha <= 116) {
+            return "MChiquitaFAmarillo.png";
+        }
+        return null;
     }
 
     private void crearBotonesParaCasillas() {
