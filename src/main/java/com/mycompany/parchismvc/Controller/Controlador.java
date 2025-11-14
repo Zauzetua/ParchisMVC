@@ -51,6 +51,10 @@ public class Controlador {
         this.events = e;
     }
 
+    public UUID getMiId(){ return miId; }
+    public Sala getSalaCache(){ return salaCache; }
+    public UUID getTurnoCache(){ return turnoCache; }
+
     // Esperas sincronas (para que tu Vista funcione igual que local)
     private CompletableFuture<MensajeUnido> pendingUnido;
 
