@@ -416,7 +416,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         Runnable moverFichaPrincipal = () -> {
             mapaPosicionFichas.put(idFichaMovida, idCasillaDestino);
             // Cuando la animación termine, el botón de destino se convertirá en la nueva ficha seleccionada.
-            teletransportarFicha(origen, destino, () -> seleccionarFicha(destino));
+            animarFicha(origen, destino, () -> seleccionarFicha(destino));
         };
         limpiarResaltados(); // Limpiamos resaltados de víctimas (rojo) antes de la acción.
 
@@ -433,7 +433,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 mapaPosicionFichas.put(idFichaEnDestino, idFichaEnDestino);
 
                 // 2. Animamos a la víctima de vuelta a casa. Cuando termine, se ejecutará la animación de la ficha principal.
-                teletransportarFicha(victima, casaOriginalFichaComida, moverFichaPrincipal);
+                animarFicha(victima, casaOriginalFichaComida, moverFichaPrincipal);
             }
             // Si es del mismo color, no hacemos nada.
         } else { // Si no hay ficha en el destino (es un movimiento a casilla vacía)
