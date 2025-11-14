@@ -95,7 +95,7 @@ public class Sala extends JFrame {
         // Si el estado de la sala cambia a JUGANDO, abrimos la ventana del juego.
         if (sala.estado == com.mycompany.parchismvc.Model.EstadoSala.JUGANDO) {
             Juego juegoFrame = new Juego();
-            juegoFrame.actualizarJugadores(sala.jugadores); // Pasamos la lista de jugadores
+            juegoFrame.actualizarJugadores(sala.jugadores, turnoDe); // Pasamos la lista de jugadores y el turno
             juegoFrame.setVisible(true);
             this.dispose(); // Cerramos la ventana de la sala
             return; // Salimos del método para no actualizar la UI de la sala que ya se cerró

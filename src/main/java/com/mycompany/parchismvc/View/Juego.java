@@ -39,7 +39,7 @@ public class Juego extends javax.swing.JFrame {
     private void initComponents() {
 
         jPanel1 = new javax.swing.JPanel();
-        JPTablero = new com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero();;
+        JPTablero = new com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero();
         lblJugador1 = new javax.swing.JLabel();
         lblJugador2 = new javax.swing.JLabel();
         lblJugador3 = new javax.swing.JLabel();
@@ -52,8 +52,6 @@ public class Juego extends javax.swing.JFrame {
 
         jPanel1.setBackground(new java.awt.Color(21, 79, 102));
         jPanel1.setPreferredSize(new java.awt.Dimension(1022, 521));
-
-        JPTablero.setPreferredSize(new java.awt.Dimension(408, 354));
 
         javax.swing.GroupLayout JPTableroLayout = new javax.swing.GroupLayout(JPTablero);
         JPTablero.setLayout(JPTableroLayout);
@@ -92,8 +90,8 @@ public class Juego extends javax.swing.JFrame {
                                     .addComponent(lblJugador1, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addComponent(lblJugador3, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)))
                             .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addGap(68, 68, 68)
-                                .addComponent(lblNickName, javax.swing.GroupLayout.PREFERRED_SIZE, 37, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                                .addGap(48, 48, 48)
+                                .addComponent(lblNickName, javax.swing.GroupLayout.PREFERRED_SIZE, 161, javax.swing.GroupLayout.PREFERRED_SIZE)))
                         .addGap(57, 57, 57)
                         .addComponent(JPTablero, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -112,7 +110,7 @@ public class Juego extends javax.swing.JFrame {
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addGap(23, 23, 23)
-                .addComponent(lblNumeroDado, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(lblNumeroDado)
                 .addGap(26, 26, 26)
                 .addComponent(JPTablero, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap(103, Short.MAX_VALUE))
@@ -136,7 +134,7 @@ public class Juego extends javax.swing.JFrame {
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, 1022, Short.MAX_VALUE)
+            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -146,7 +144,7 @@ public class Juego extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    public void actualizarJugadores(List<Jugador> jugadores) {
+    public void actualizarJugadores(List<Jugador> jugadores, java.util.UUID turnoDe) {
         // Asumo que tienes una lista de JLabels para los jugadores
         javax.swing.JLabel[] labels = {lblJugador1, lblJugador2, lblJugador3, lblJugador4};
 
@@ -154,13 +152,21 @@ public class Juego extends javax.swing.JFrame {
         for (javax.swing.JLabel label : labels) {
             label.setVisible(false);
         }
-
+        
+        lblNickName.setText(""); // Limpiar el nombre del turno anterior
+        
         // Actualizar y mostrar las etiquetas para los jugadores existentes
         for (int i = 0; i < jugadores.size(); i++) {
             if (i < labels.length) {
+                Jugador jugador = jugadores.get(i);
                 // La clase Jugador tiene un campo público 'nombre'
-                labels[i].setText(jugadores.get(i).nombre);
+                labels[i].setText(jugador.nombre);
                 labels[i].setVisible(true);
+
+                // Si este es el jugador en turno, actualiza lblNickName
+                if (turnoDe != null && turnoDe.equals(jugador.id)) {
+                    lblNickName.setText("Turno de: " + jugador.nombre);
+                }
             }
         }
     }
@@ -203,12 +209,12 @@ public class Juego extends javax.swing.JFrame {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel JPTablero;
+    private javax.swing.JPanel jPanel1;
     private javax.swing.JLabel lblJugador1;
     private javax.swing.JLabel lblJugador2;
     private javax.swing.JLabel lblJugador3;
     private javax.swing.JLabel lblJugador4;
     private javax.swing.JLabel lblNickName;
     private javax.swing.JLabel lblNumeroDado;
-    private javax.swing.JPanel jPanel1;
     // End of variables declaration//GEN-END:variables
 }
