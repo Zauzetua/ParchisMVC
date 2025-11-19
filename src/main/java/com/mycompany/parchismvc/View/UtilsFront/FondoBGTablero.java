@@ -293,6 +293,12 @@ public class FondoBGTablero extends ImageBackgroundPanel {
     }
     
     private boolean esMovible(com.mycompany.parchismvc.Model.Ficha ficha, int valorDado) {
+        // Si la ficha ya está en la meta, no se puede mover.
+        ColorJugador color = getColorDeFicha(ficha.id);
+        if (color != null && ficha.posicion == getMeta(color)) {
+            return false;
+        }
+        
         if (ficha.posicion == -1) {
             return valorDado == 5;
         }
@@ -557,51 +563,57 @@ public class FondoBGTablero extends ImageBackgroundPanel {
      * @param destinoBoton El botón de destino (puede estar vacío o contener una víctima).
      */
     private void ejecutarMovimientoOCaptura(JButton destinoBoton) {
-        final JButton origen = botonFichaSeleccionada;
-        final JButton destino = destinoBoton;
-        int idCasillaDestino = Integer.parseInt(destino.getActionCommand());
-
+        final JButton origenBoton = botonFichaSeleccionada;
+        final JButton destinoBotonFinal = destinoBoton;
+        final int idCasillaOrigen = Integer.parseInt(origenBoton.getActionCommand());
+        final int idCasillaDestino = Integer.parseInt(destinoBotonFinal.getActionCommand());
+    
         // Identificamos la ficha que se mueve
-        UUID idFichaMovida = getFichaEnCasilla(Integer.parseInt(origen.getActionCommand()));
+        final UUID idFichaMovida = getFichaEnCasilla(idCasillaOrigen);
         if (idFichaMovida == null) {
             limpiarResaltados();
             botonFichaSeleccionada = null;
             return; // No se pudo identificar la ficha, abortamos.
         }
-
+    
         // Verificamos si el destino está ocupado por otra ficha (la víctima)
-        UUID idFichaEnDestino = getFichaEnCasilla(idCasillaDestino);
-
+        final UUID idFichaEnDestino = getFichaEnCasilla(idCasillaDestino);
+        final ColorJugador colorFichaMovida = getColorDeFicha(idFichaMovida);
+    
         // Preparamos la acción de mover la ficha principal. Se ejecutará sola o después de una captura.
-        Runnable moverFichaPrincipal = () -> {            
-            // Notificamos al controlador que el movimiento ha terminado para que lo envíe al servidor.
-            if (onMoveListener != null) {
-                int indiceFicha = getIndiceDeFicha(idFichaMovida, fichasPorJugadorActuales); //Buscamos el indice de la ficha
-                onMoveListener.accept(indiceFicha, idCasillaDestino);
-            }
-            limpiarResaltados(); // Limpiamos todos los resaltados inmediatamente después de ejecutar la acción.
+        Runnable moverFichaPrincipal = () -> {
+            List<Integer> path = calcularRuta(idCasillaOrigen, idCasillaDestino, colorFichaMovida);
+            animarFicha(origenBoton, destinoBotonFinal, path, () -> {
+                // Cuando la animación termina, notificamos al controlador para que actualice el estado del juego.
+                if (onMoveListener != null) {
+                    int indiceFicha = getIndiceDeFicha(idFichaMovida, fichasPorJugadorActuales);
+                    onMoveListener.accept(indiceFicha, idCasillaDestino);
+                }
+                limpiarResaltados();
+            });
         };
-
+    
         // Si hay una ficha en el destino (es una captura potencial)
         if (idFichaEnDestino != null) {
             // Verificamos que sea de un color diferente Y que la víctima esté en el tablero (no en su casa).
-            if (getColorDeFicha(idFichaMovida) != getColorDeFicha(idFichaEnDestino) && idCasillaDestino < 101) {
-
+            if (colorFichaMovida != getColorDeFicha(idFichaEnDestino) && idCasillaDestino < 101) {
                 System.out.println("¡COMER! Ficha " + idFichaMovida + " come a " + idFichaEnDestino);
-                JButton victima = botonesCasillas.get(idCasillaDestino);
+                JButton victimaBoton = botonesCasillas.get(idCasillaDestino);
                 
                 // Obtenemos el botón de la casa de la víctima para la animación de retorno.
                 ColorJugador colorVictima = getColorDeFicha(idFichaEnDestino);
                 JButton casaOriginalFichaComida = botonesCasillas.get(getBotonCasaIdDeFicha(idFichaEnDestino, getIndiceDeFicha(idFichaEnDestino, fichasPorJugadorActuales), colorVictima));
 
-                // 2. Animamos a la víctima de vuelta a casa. Cuando termine, se ejecutará la animación de la ficha principal.
-                animarFicha(victima, casaOriginalFichaComida, moverFichaPrincipal);
+                // Animamos a la víctima de vuelta a casa (sin ruta, movimiento simple).
+                animarFicha(victimaBoton, casaOriginalFichaComida, null, () -> {
+                    // Cuando la víctima llega a casa, movemos la ficha principal.
+                    moverFichaPrincipal.run();
+                });
             }
             // Si es del mismo color, no hacemos nada.
         } else { // Si no hay ficha en el destino (es un movimiento a casilla vacía)
             moverFichaPrincipal.run();
         }
-
     }
     
     /**
@@ -684,12 +696,13 @@ public class FondoBGTablero extends ImageBackgroundPanel {
      * @param destino Botón final.
      * @param onAnimationEnd Un Runnable que se ejecuta al finalizar la
      * animación.
+     * @param path La lista de IDs de casillas a seguir. Si es null, se anima en línea recta.
      */
-    private void animarFicha(JButton origen, JButton destino, Runnable onAnimationEnd) {
+    private void animarFicha(JButton origen, JButton destino, List<Integer> path, Runnable onAnimationEnd) {
         final Icon fichaIcon = origen.getIcon();
-        if (fichaIcon == null || fichaIcon instanceof IconoDeHueco) { // Si no hay icono o es un hueco, no hay nada que animar.
+        if (fichaIcon == null || fichaIcon instanceof IconoDeHueco) {
             if (onAnimationEnd != null) {
-                onAnimationEnd.run();
+                onAnimationEnd.run(); // Si no hay ficha, ejecutar el callback y salir.
             }
             return;
         }
@@ -709,44 +722,107 @@ public class FondoBGTablero extends ImageBackgroundPanel {
 
         this.setEnabled(false); // Deshabilitamos clics durante la animación
 
+        // Si no hay una ruta definida (o es un movimiento a casa), hacer una animación simple.
+        if (path == null || path.isEmpty()) {
+            animarMovimientoSimple(fichaAnimada, origen.getLocation(), destino.getLocation(), () -> {
+                finalizarAnimacion(fichaAnimada, destino, fichaIcon, onAnimationEnd);
+            });
+        } else {
+            // Si hay una ruta, animar paso por paso.
+            animarRutaPasoAPaso(fichaAnimada, path, 0, onAnimationEnd);
+        }
+    }
+
+    private void animarRutaPasoAPaso(JLabel fichaAnimada, List<Integer> path, int pathIndex, Runnable onAnimationEnd) {
+        if (pathIndex >= path.size() - 1) {
+            // Hemos llegado al final de la ruta.
+            JButton destinoFinal = botonesCasillas.get(path.get(path.size() - 1));
+            finalizarAnimacion(fichaAnimada, destinoFinal, (Icon) fichaAnimada.getIcon(), onAnimationEnd);
+            return;
+        }
+
+        Point startPoint = botonesCasillas.get(path.get(pathIndex)).getLocation();
+        Point endPoint = botonesCasillas.get(path.get(pathIndex + 1)).getLocation();
+
+        // Aseguramos que la ficha esté en la posición de inicio del segmento actual.
+        fichaAnimada.setLocation(startPoint);
+
+        animarMovimientoSimple(fichaAnimada, startPoint, endPoint, () -> {
+            // Cuando el segmento termina, llamamos recursivamente para el siguiente.
+            animarRutaPasoAPaso(fichaAnimada, path, pathIndex + 1, onAnimationEnd);
+        });
+    }
+
+    private void animarMovimientoSimple(JLabel fichaAnimada, Point startPoint, Point endPoint, Runnable onSegmentEnd) {
         final long startTime = System.currentTimeMillis();
-        final int duration = 400;
-        final Point startPoint = origen.getLocation();
-        final Point endPoint = destino.getLocation();
+        final int durationPerStep = 150; // Duración de la animación para un solo paso.
 
-        animator = new Timer(10, (ae) -> {
+        Timer stepAnimator = new Timer(10, null);
+        stepAnimator.addActionListener(ae -> {
             long elapsed = System.currentTimeMillis() - startTime;
-            double t = Math.min(1.0, (double) elapsed / duration);
+            double t = Math.min(1.0, (double) elapsed / durationPerStep);
 
-            // Interpolación lineal para X
             int x = (int) (startPoint.x + t * (endPoint.x - startPoint.x));
-
-            // Interpolación lineal para Y (movimiento base)
             int y_linear = (int) (startPoint.y + t * (endPoint.y - startPoint.y));
 
-            // Componente de salto parabólico para Y
-            int jumpHeight = 30; // Altura máxima del salto en píxeles. Ajusta este valor si quieres un salto más alto/bajo.
-            int y_jump_offset = (int) (-jumpHeight * 4 * t * (1 - t)); // 4*t*(1-t) crea una parábola que va de 0 a 1 y de vuelta a 0.
+            // Efecto de salto
+            int jumpHeight = 20;
+            int y_jump_offset = (int) (-jumpHeight * 4 * t * (1 - t));
             int y = y_linear + y_jump_offset;
 
             fichaAnimada.setLocation(x, y);
 
             if (t >= 1.0) {
-                ((Timer) ae.getSource()).stop();
-                remove(fichaAnimada);
-                destino.setIcon(fichaIcon);
-                destino.setContentAreaFilled(false); // Aseguramos que la casilla de destino siga siendo transparente
-                this.setEnabled(true);
-                repaint();
-                if (onAnimationEnd != null) {
-                    onAnimationEnd.run(); // Ejecutar la acción post-animación
+                stepAnimator.stop();
+                if (onSegmentEnd != null) {
+                    onSegmentEnd.run();
                 }
             }
         });
-        animator.start();
+        stepAnimator.start();
     }
 
-    /**
+    private void finalizarAnimacion(JLabel fichaAnimada, JButton destino, Icon fichaIcon, Runnable onAnimationEnd) {
+        remove(fichaAnimada);
+        destino.setIcon(fichaIcon);
+        destino.setContentAreaFilled(false);
+        this.setEnabled(true);
+        repaint();
+        if (onAnimationEnd != null) {
+            onAnimationEnd.run();
+        }
+    }
+    
+    private List<Integer> calcularRuta(int idOrigen, int idDestino, ColorJugador color) {
+        java.util.List<Integer> path = new java.util.ArrayList<>();
+        path.add(idOrigen);
+
+        // Si la ficha sale de casa, el origen es una casilla > 100.
+        if (idOrigen > 100) {
+            path.add(idDestino);
+            return path;
+        }
+
+        int actual = idOrigen;
+        while (actual != idDestino) {
+            if (actual > 68) { // En pasillo
+                actual++;
+            } else if (actual == getCasillaEntradaPasillo(color)) { // Entrada a pasillo
+                actual = getPrimerPasoPasillo(color);
+            } else { // Tablero normal
+                actual = (actual % 68) + 1;
+            }
+            
+            // Control para evitar bucles infinitos en caso de lógica inesperada
+            if (path.contains(actual)) break;
+            
+            path.add(actual);
+        }
+
+        return path;
+    }
+
+     /**
      * Itera sobre las casillas de destino visibles y resalta las fichas
      * enemigas que encuentre.
      */
@@ -815,6 +891,13 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         fichasPorJugadorActuales.values().stream()
             .flatMap(List::stream)
             .filter(ficha -> getColorDeFicha(ficha.id) == colorDelTurno)
+            .filter(ficha -> {
+                // Filtramos las fichas que ya han llegado a la meta.
+                if (ficha.posicion == getMeta(colorDelTurno)) {
+                    return false;
+                }
+                return true;
+            })
             .forEach(ficha -> {
                 boolean puedeMover = false;
                 if (ficha.posicion == -1) { // En base
