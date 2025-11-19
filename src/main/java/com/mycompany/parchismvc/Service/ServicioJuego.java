@@ -24,7 +24,7 @@ public class ServicioJuego {
     /**
      * Constantes del juego
      */
-    public static final int TAM_TABLERO = 52;
+    public static final int TAM_TABLERO = 68;
     /**
      * Numero de fichas por jugador
      */
@@ -282,12 +282,7 @@ public class ServicioJuego {
 
         if (f.estado == EstadoFicha.BASE) {
             if (valor != 5) {
-                ultimoValorTirado.remove(jugadorId);
-                boolean extra = tieneTurnoExtra.getOrDefault(jugadorId, false);
-                if (!extra) {
-                    avanzarTurno();
-                }
-                tieneTurnoExtra.put(jugadorId, false);
+                pasarTurno();
                 return "Necesitas un 5 para salir de base. Turno pasado.";
             } else {
                 int posInicio = inicioPorColor.get(actual.color);
@@ -295,64 +290,64 @@ public class ServicioJuego {
                 f.estado = EstadoFicha.EN_TABLERO;
                 aplicarCapturaYBloqueoAlColocar(f);
                 boolean extra = tieneTurnoExtra.getOrDefault(jugadorId, false);
-                ultimoValorTirado.remove(jugadorId);
-                if (!extra) {
-                    avanzarTurno();
-                } else {
-                    tieneTurnoExtra.put(jugadorId, false);
-                }
+                pasarTurno();
                 return "Ficha sacada a tablero en casilla " + f.posicion;
             }
         }
 
         if (f.estado == EstadoFicha.EN_TABLERO) {
-            int destino = f.posicion + valor;
-            int posMeta = inicioPorColor.get(actual.color) + TAM_TABLERO;
-            if (destino >= posMeta) {
-                f.posicion = posMeta;
-                f.estado = EstadoFicha.CASA;
-                ultimoValorTirado.remove(jugadorId);
-                boolean extra = tieneTurnoExtra.getOrDefault(jugadorId, false);
-                if (!extra) {
-                    avanzarTurno();
-                } else {
-                    tieneTurnoExtra.put(jugadorId, false);
+            int destino = (f.posicion - 1 + valor) % TAM_TABLERO + 1;
+            int casillaEntradaMeta = (inicioPorColor.get(actual.color) - 2 + TAM_TABLERO) % TAM_TABLERO + 1;
+
+            // Comprobar si la ficha pasa por su casilla de entrada a la meta
+            boolean pasaPorMeta = false;
+            for (int i = 1; i <= valor; i++) {
+                if (((f.posicion - 1 + i) % TAM_TABLERO + 1) == casillaEntradaMeta) {
+                    pasaPorMeta = true;
+                    break;
                 }
+            }
+
+            if (pasaPorMeta) {
+                // La ficha ha completado una vuelta y ha llegado a su fin.
+                // En una implementación completa, aquí se calcularía la entrada al pasillo final.
+                // Por ahora, la marcaremos como que ha llegado a casa.
+                f.estado = EstadoFicha.CASA;
+                f.posicion = -1; // O una posición especial para la casa.
+                pasarTurno();
                 comprobarVictoria(actual);
                 return "Ficha llego a CASA. Estado actualizado.";
             } else {
                 // comprobar bloqueo en el camino
                 for (int paso = 1; paso <= valor; paso++) {
                     int inter = f.posicion + paso;
-                    if (inter < posMeta) {
-                        int mod = inter % TAM_TABLERO;
-                        if (posicionBloqueadaPorRival(mod, actual.id)) {
-                            ultimoValorTirado.remove(jugadorId);
-                            boolean extra = tieneTurnoExtra.getOrDefault(jugadorId, false);
-                            if (!extra) {
-                                avanzarTurno();
-                            } else {
-                                tieneTurnoExtra.put(jugadorId, false);
-                            }
-                            return "Movimiento bloqueado por bloqueo rival en casilla " + mod + ". Turno terminado.";
-                        }
+                    // La posición en el tablero se calcula con el módulo
+                    int mod = (inter - 1) % TAM_TABLERO + 1;
+                    if (posicionBloqueadaPorRival(mod, actual.id)) {
+                        pasarTurno();
+                        return "Movimiento bloqueado por bloqueo rival en casilla " + mod + ". Turno terminado.";
                     }
                 }
                 f.posicion = destino;
                 aplicarCapturaYBloqueoAlColocar(f);
-                ultimoValorTirado.remove(jugadorId);
-                boolean extra = tieneTurnoExtra.getOrDefault(jugadorId, false);
-                if (!extra) {
-                    avanzarTurno();
-                } else {
-                    tieneTurnoExtra.put(jugadorId, false);
-                }
+                pasarTurno();
                 comprobarVictoria(actual);
                 return "Ficha movida a posición " + f.posicion;
             }
         }
 
         return "Movimiento no permitido";
+    }
+
+    private void pasarTurno() {
+        Jugador actual = jugadorActual();
+        if (actual == null) return;
+        ultimoValorTirado.remove(actual.id);
+        boolean extra = tieneTurnoExtra.getOrDefault(actual.id, false);
+        if (!extra) {
+            avanzarTurno();
+        }
+        tieneTurnoExtra.put(actual.id, false); // El turno extra se consume o se pierde
     }
 
     /**
@@ -473,9 +468,16 @@ public class ServicioJuego {
         for (Jugador j : s.jugadores) {
             sb.append(" - ").append(j.toString()).append("\n");
             List<Ficha> ps = s.fichasPorJugador.get(j.id);
-            if (ps != null) {
+            if (ps != null) { // ps es la lista de fichas del jugador j
                 for (int i = 0; i < ps.size(); i++) {
-                    sb.append("     [" + i + "] " + ps.get(i).toString() + "\n");
+                    Ficha f = ps.get(i);
+                    String pos = switch (f.estado) {
+                        case BASE -> "BASE";
+                        case CASA -> "CASA";
+                        // Para EN_TABLERO, mostramos la posición numérica
+                        default -> "pos=" + f.posicion;
+                    };
+                    sb.append("     [").append(i).append("] ").append(f.estado).append(" (").append(pos).append(")\n");
                 }
             }
         }

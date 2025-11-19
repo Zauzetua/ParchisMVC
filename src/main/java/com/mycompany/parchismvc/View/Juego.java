@@ -45,6 +45,7 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
         
         if (this.controlador != null) {
             this.controlador.setEvents(this);
+            ((com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero) JPTablero).setControlador(this.controlador);
         }
     }
     
@@ -67,6 +68,8 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
         ((com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero) JPTablero).setOnMoveListener((indiceFicha, idCasillaDestino) -> {
             if (controlador != null) {
                 controlador.mover(miId, indiceFicha);
+                // Limpiamos los resaltados inmediatamente después de enviar el movimiento.
+                ((com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero) JPTablero).limpiarResaltados();
             }
         });
     }
@@ -91,7 +94,7 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
         lblJugadorAzul = new javax.swing.JLabel();
         lblJugadorAmarillo = new javax.swing.JLabel();
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setPreferredSize(new java.awt.Dimension(1022, 521));
 
         jPanel1.setBackground(new java.awt.Color(21, 79, 102));

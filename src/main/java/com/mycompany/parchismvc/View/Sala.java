@@ -40,7 +40,7 @@ public class Sala extends JFrame implements GameEvents {
 
     private void buildUI(){
         setTitle("Sala");
-        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         setBackground(new Color(8,55,70));
         getContentPane().setLayout(new BorderLayout());
         lblEstado = new JLabel("Lobby"); lblEstado.setForeground(Color.WHITE);
@@ -81,7 +81,21 @@ public class Sala extends JFrame implements GameEvents {
 
     private void cambiarTimer(int delta){ timerIndex = (timerIndex + delta + TIMER_OPTIONS.length) % TIMER_OPTIONS.length; int nuevo = TIMER_OPTIONS[timerIndex]; lblTimerValue.setText(nuevo+" SG"); if(controlador!=null) controlador.setTiempo(nuevo); }
     private void elegirColor(ColorJugador c){ if(controlador==null || controlador.getMiId()==null) return; var msg = controlador.elegirColor(controlador.getMiId(), c); lblEstado.setText(msg); }
-    private void toggleReady(){ if(controlador==null || controlador.getMiId()==null) return; var sala = controlador.getSalaCache(); if(sala==null) return; Jugador yoJugador = sala.jugadores.stream().filter(j -> j.id.equals(controlador.getMiId())).findFirst().orElse(null); if(yoJugador==null) return; String r = yoJugador.listo? controlador.cancelar(controlador.getMiId()) : controlador.listo(controlador.getMiId()); lblEstado.setText(r); }
+    private void toggleReady(){
+        if (controlador == null || miId == null) return;
+
+        var sala = controlador.getSalaCache();
+        if (sala == null) return;
+
+        Jugador yoJugador = sala.jugadores.stream()
+                .filter(j -> j.id.equals(miId))
+                .findFirst().orElse(null);
+
+        if (yoJugador == null) return;
+
+        String r = yoJugador.listo ? controlador.cancelar(miId) : controlador.listo(miId);
+        lblEstado.setText(r);
+    }
 
     private void actualizarJugadores(com.mycompany.parchismvc.Model.Sala sala, UUID turnoDe, UUID yo){
         if(sala==null) return; int tiempo = sala.tiempoPorTurno; if(tiempo==30) timerIndex=0; else if(tiempo==15) timerIndex=1; lblTimerValue.setText(tiempo+" SG");
