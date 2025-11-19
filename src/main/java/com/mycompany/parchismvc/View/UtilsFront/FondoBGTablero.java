@@ -265,39 +265,41 @@ public class FondoBGTablero extends ImageBackgroundPanel {
      * @param colorDelJugador El color del jugador en turno para determinar la casilla de inicio.
      */
     public void mostrarCasillasDestino(int cantidadDeCasillas, ColorJugador colorDelJugador) {
-        SwingUtilities.invokeLater(() -> {
-            // 1. Ocultar todas las casillas del tablero (las que no tienen ficha)
-            for (Map.Entry<Integer, JButton> entry : botonesCasillas.entrySet()) {
-                if (entry.getKey() < 101) { // Solo casillas del tablero
-                    JButton botonCasilla = entry.getValue();
-                    if (botonCasilla.getIcon() == null) { // Si está vacía
-                        botonCasilla.setVisible(false);
-                        botonCasilla.setEnabled(false);
+        // Ocultar y deshabilitar todas las casillas vacías para empezar de cero.
+        for (Map.Entry<Integer, JButton> entry : botonesCasillas.entrySet()) {
+            if (entry.getKey() < 101 && entry.getValue().getIcon() == null) {
+                entry.getValue().setVisible(false);
+                entry.getValue().setEnabled(false);
+            }
+        }
+    
+        // Iterar sobre las fichas del jugador actual para determinar sus posibles movimientos.
+        fichasPorJugadorActuales.values().stream()
+            .flatMap(List::stream)
+            .filter(ficha -> getColorDeFicha(ficha.id) == colorDelJugador)
+            .forEach(ficha -> {
+                int posActual = ficha.posicion;
+    
+                // Si la ficha está en la base (posición -1)
+                if (posActual == -1) {
+                    // Solo se puede mover si se saca un 5.
+                    if (cantidadDeCasillas == 5) {
+                        int casillaDeSalida = getCasillaDeSalida(colorDelJugador);
+                        resaltarBoton(casillaDeSalida);
                     }
+                } 
+                // Si la ficha está en el tablero
+                else if (posActual > 0) {
+                    // Calculamos la única casilla de destino final.
+                    int idCasillaAMostrar = ((posActual - 1 + cantidadDeCasillas) % 68) + 1;
+                    resaltarBoton(idCasillaAMostrar);
                 }
-            }
-
-            // 2. Determinar la casilla de inicio según el color del jugador
-            int casillaDeSalida = switch (colorDelJugador) {
-                case ROJO -> 39;
-                case AZUL -> 22;
-                case VERDE -> 56;
-                case AMARILLO -> 5;
-            };
-
-            // CASO ESPECIAL: Si se saca un 5, se puede mover una ficha desde casa.
-            if (cantidadDeCasillas == 5) {
-                JButton botonSalida = botonesCasillas.get(casillaDeSalida);
-                if (botonSalida != null) {
-                    botonSalida.setVisible(true);
-                    botonSalida.setEnabled(true);
-                }
-            }
-
-            // 2. Mostrar y resaltar solo las casillas deseadas
-            for (int i = 0; i < cantidadDeCasillas; i++) {
-                // Calculamos el ID de la casilla, asegurando que vuelva a 1 después de 68
-                int idCasillaAMostrar = ((casillaDeSalida - 1 + i) % 68) + 1;
+            });
+    
+        repaint();
+    }
+    
+    private void resaltarBoton(int idCasillaAMostrar) {
                 JButton botonAMostrar = botonesCasillas.get(idCasillaAMostrar);
                 if (botonAMostrar != null) {
                     System.out.println("Mostrando casilla: " + idCasillaAMostrar);
@@ -308,8 +310,14 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                     botonAMostrar.setBorder(javax.swing.BorderFactory.createLineBorder(Color.ORANGE, 1));
                 }
             }
-            repaint();
-        });
+    
+    private int getCasillaDeSalida(ColorJugador color) {
+        return switch (color) {
+            case ROJO -> 39;
+            case AZUL -> 22;
+            case VERDE -> 56;
+            case AMARILLO -> 5;
+        };
     }
 
     /**

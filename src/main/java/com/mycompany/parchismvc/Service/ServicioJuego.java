@@ -296,33 +296,32 @@ public class ServicioJuego {
         }
 
         if (f.estado == EstadoFicha.EN_TABLERO) {
-            int destino = (f.posicion - 1 + valor) % TAM_TABLERO + 1;
-            int casillaEntradaMeta = (inicioPorColor.get(actual.color) - 2 + TAM_TABLERO) % TAM_TABLERO + 1;
+            // Lógica para movimiento en el tablero principal o entrada al pasillo final
+            if (f.posicion <= 68) { 
+                int entradaPasillo = getCasillaEntradaPasillo(actual.color);
+                int primerPasoPasillo = getPrimerPasoPasillo(actual.color);
+                int meta = getMeta(actual.color);
 
-            // Comprobar si la ficha pasa por su casilla de entrada a la meta
-            boolean pasaPorMeta = false;
-            for (int i = 1; i <= valor; i++) {
-                if (((f.posicion - 1 + i) % TAM_TABLERO + 1) == casillaEntradaMeta) {
-                    pasaPorMeta = true;
-                    break;
+                // Comprobamos si la ficha puede entrar al pasillo
+                int pasosRestantes = valor;
+                for (int i = 1; i <= valor; i++) {
+                    int posIntermedia = (f.posicion - 1 + i) % TAM_TABLERO + 1;
+                    if (posIntermedia == entradaPasillo) {
+                        pasosRestantes = valor - i + 1; // Corregido: +1 porque la entrada cuenta como un paso
+                        int posFinalPasillo = primerPasoPasillo + pasosRestantes;
+                        if (posFinalPasillo > meta) { // Rebote
+                            posFinalPasillo = meta - (posFinalPasillo - meta);
+                        }
+                        f.posicion = posFinalPasillo;
+                        pasarTurno();
+                        return "Ficha entra al pasillo y se mueve a " + f.posicion;
+                    }
                 }
-            }
 
-            if (pasaPorMeta) {
-                // La ficha ha completado una vuelta y ha llegado a su fin.
-                // En una implementación completa, aquí se calcularía la entrada al pasillo final.
-                // Por ahora, la marcaremos como que ha llegado a casa.
-                f.estado = EstadoFicha.CASA;
-                f.posicion = -1; // O una posición especial para la casa.
-                pasarTurno();
-                comprobarVictoria(actual);
-                return "Ficha llego a CASA. Estado actualizado.";
-            } else {
-                // comprobar bloqueo en el camino
+                // Si no entra al pasillo, es un movimiento normal en el tablero
+                int destino = (f.posicion - 1 + valor) % TAM_TABLERO + 1;
                 for (int paso = 1; paso <= valor; paso++) {
-                    int inter = f.posicion + paso;
-                    // La posición en el tablero se calcula con el módulo
-                    int mod = (inter - 1) % TAM_TABLERO + 1;
+                    int mod = (f.posicion - 1 + paso) % TAM_TABLERO + 1;
                     if (posicionBloqueadaPorRival(mod, actual.id)) {
                         pasarTurno();
                         return "Movimiento bloqueado por bloqueo rival en casilla " + mod + ". Turno terminado.";
@@ -331,12 +330,52 @@ public class ServicioJuego {
                 f.posicion = destino;
                 aplicarCapturaYBloqueoAlColocar(f);
                 pasarTurno();
+                return "Ficha movida a posición " + f.posicion;
+            } 
+            // Lógica para movimiento DENTRO del pasillo final
+            else {
+                int meta = getMeta(actual.color);
+                int destino = f.posicion + valor;
+                if (destino > meta) { // Rebote
+                    destino = meta - (destino - meta);
+                } else if (destino == meta) {
+                    f.estado = EstadoFicha.CASA;
+                }
+                f.posicion = destino;
+                pasarTurno();
                 comprobarVictoria(actual);
                 return "Ficha movida a posición " + f.posicion;
             }
         }
 
         return "Movimiento no permitido";
+    }
+
+    private int getCasillaEntradaPasillo(ColorJugador color) {
+        return switch (color) {
+            case ROJO -> 34;
+            case AZUL -> 17;
+            case VERDE -> 51;
+            case AMARILLO -> 68;
+        };
+    }
+
+    private int getPrimerPasoPasillo(ColorJugador color) {
+        return switch (color) {
+            case ROJO -> 85;
+            case AZUL -> 77;
+            case VERDE -> 93;
+            case AMARILLO -> 69;
+        };
+    }
+
+    private int getMeta(ColorJugador color) {
+        return switch (color) {
+            case ROJO -> 92;
+            case AZUL -> 84;
+            case VERDE -> 100;
+            case AMARILLO -> 76;
+        };
     }
 
     private void pasarTurno() {
