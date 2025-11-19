@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.UUID;
+import javax.swing.BorderFactory;
 import javax.swing.Timer;
 import javax.swing.JButton;
 import javax.swing.Icon;
@@ -265,52 +266,70 @@ public class FondoBGTablero extends ImageBackgroundPanel {
      * @param colorDelJugador El color del jugador en turno para determinar la casilla de inicio.
      */
     public void mostrarCasillasDestino(int cantidadDeCasillas, ColorJugador colorDelJugador) {
-        // Ocultar y deshabilitar todas las casillas vacías para empezar de cero.
-        for (Map.Entry<Integer, JButton> entry : botonesCasillas.entrySet()) {
-            if (entry.getKey() < 101 && entry.getValue().getIcon() == null) {
-                entry.getValue().setVisible(false);
-                entry.getValue().setEnabled(false);
-            }
-        }
-    
-        // Iterar sobre las fichas del jugador actual para determinar sus posibles movimientos.
+        // Iterar sobre las fichas del jugador actual para determinar y resaltar sus posibles movimientos.
         fichasPorJugadorActuales.values().stream()
             .flatMap(List::stream)
-            .filter(ficha -> getColorDeFicha(ficha.id) == colorDelJugador)
+            .filter(ficha -> getColorDeFicha(ficha.id) == colorDelJugador && esMovible(ficha, cantidadDeCasillas))
             .forEach(ficha -> {
                 int posActual = ficha.posicion;
-    
-                // Si la ficha está en la base (posición -1)
-                if (posActual == -1) {
-                    // Solo se puede mover si se saca un 5.
-                    if (cantidadDeCasillas == 5) {
-                        int casillaDeSalida = getCasillaDeSalida(colorDelJugador);
-                        resaltarBoton(casillaDeSalida);
+                int entradaPasillo = getCasillaEntradaPasillo(colorDelJugador);
+                int meta = getMeta(colorDelJugador);
+
+                if (posActual == -1) { // Desde la base
+                    resaltarBoton(getCasillaDeSalida(colorDelJugador));
+                } else if (posActual > 0 && posActual <= 68) { // Desde el tablero
+                    if (posActual == entradaPasillo) {
+                        int destino = getPrimerPasoPasillo(colorDelJugador) + cantidadDeCasillas - 1;
+                        resaltarBoton(destino <= meta ? destino : meta - (destino - meta));
+                    } else {
+                        resaltarBoton(((posActual - 1 + cantidadDeCasillas) % 68) + 1);
                     }
-                } 
-                // Si la ficha está en el tablero
-                else if (posActual > 0) {
-                    // Calculamos la única casilla de destino final.
-                    int idCasillaAMostrar = ((posActual - 1 + cantidadDeCasillas) % 68) + 1;
-                    resaltarBoton(idCasillaAMostrar);
+                } else if (posActual > 68) { // Desde el pasillo
+                    int destino = posActual + cantidadDeCasillas;
+                    resaltarBoton(destino <= meta ? destino : meta - (destino - meta));
                 }
             });
-    
         repaint();
     }
     
+    private boolean esMovible(com.mycompany.parchismvc.Model.Ficha ficha, int valorDado) {
+        if (ficha.posicion == -1) {
+            return valorDado == 5;
+        }
+        return true; // Para fichas en tablero o pasillo, asumimos que se pueden mover.
+    }
+
     private void resaltarBoton(int idCasillaAMostrar) {
                 JButton botonAMostrar = botonesCasillas.get(idCasillaAMostrar);
                 if (botonAMostrar != null) {
                     System.out.println("Mostrando casilla: " + idCasillaAMostrar);
                     botonAMostrar.setVisible(true);
                     botonAMostrar.setEnabled(true);
-                    botonAMostrar.setContentAreaFilled(true);
-                    botonAMostrar.setBackground(new Color(255, 255, 0, 120));
+                    botonAMostrar.setOpaque(true); 
+                    botonAMostrar.setContentAreaFilled(true); // Necesario para que el fondo se pinte
+                    botonAMostrar.setBackground(new Color(255, 255, 0, 180)); // Amarillo más opaco
                     botonAMostrar.setBorder(javax.swing.BorderFactory.createLineBorder(Color.ORANGE, 1));
                 }
             }
     
+    /**
+     * Restaura una casilla a su estado visual por defecto (transparente y sin borde).
+     * @param idCasilla El ID de la casilla a limpiar.
+     */
+    private void limpiarBoton(int idCasilla) {
+        JButton botonALimpiar = botonesCasillas.get(idCasilla);
+        if (botonALimpiar != null) {
+            // No ocultamos el botón, solo revertimos su estado visual.
+            // Si no tiene ficha, se quedará como un área transparente.
+            // Si va a recibir una ficha, necesita estar visible y habilitado.
+            botonALimpiar.setEnabled(true); // Lo dejamos habilitado para poder hacer clic en las fichas
+            botonALimpiar.setOpaque(false); // Lo volvemos transparente
+            botonALimpiar.setContentAreaFilled(false);
+            botonALimpiar.setBackground(new Color(0, 0, 0, 0)); // Fondo completamente transparente
+            botonALimpiar.setBorder(null); // Quitamos el borde
+        }
+    }
+
     private int getCasillaDeSalida(ColorJugador color) {
         return switch (color) {
             case ROJO -> 39;
@@ -320,6 +339,34 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         };
     }
 
+    private int getCasillaEntradaPasillo(ColorJugador color) {
+        return switch (color) {
+            case ROJO -> 34;
+            case AZUL -> 17;
+            case VERDE -> 51;
+            case AMARILLO -> 68;
+        };
+    }
+
+    private int getPrimerPasoPasillo(ColorJugador color) {
+        return switch (color) {
+            case ROJO -> 85;
+            case AZUL -> 77;
+            case VERDE -> 93;
+            case AMARILLO -> 69;
+        };
+    }
+
+    private int getMeta(ColorJugador color) {
+        return switch (color) {
+            case ROJO -> 92;
+            case AZUL -> 84;
+            case VERDE -> 100;
+            case AMARILLO -> 76;
+        };
+    }
+
+
     /**
      * Actualiza la posición de todas las fichas en el tablero basándose en el estado
      * proporcionado por el servidor. Este método es clave para la sincronización visual
@@ -328,12 +375,12 @@ public class FondoBGTablero extends ImageBackgroundPanel {
      * @param fichasPorJugador Un mapa que contiene la lista de fichas para cada ID de jugador.
      * @param nuevosColores Un mapa opcional para actualizar los colores de los jugadores.
      */
-    public void actualizarEstadoFichas(Map<UUID, List<com.mycompany.parchismvc.Model.Ficha>> fichasPorJugador, Map<UUID, ColorJugador> nuevosColores) {
+    public void actualizarEstadoFichas(Map<UUID, List<com.mycompany.parchismvc.Model.Ficha>> fichasPorJugador, Map<UUID, ColorJugador> nuevosColores, UUID turnoDe, UUID miId) {
         SwingUtilities.invokeLater(() -> {
             limpiarResaltados(); // Limpia cualquier selección o resaltado activo.
 
             // Actualiza el mapa de colores interno si se proporciona uno nuevo.
-            if (nuevosColores != null) this.mapaColoresJugadores.putAll(nuevosColores);
+            if (nuevosColores != null && !nuevosColores.isEmpty()) this.mapaColoresJugadores.putAll(nuevosColores);
 
             // Mapa para saber qué casillas del tablero (1-100) estarán ocupadas
             Map<Integer, Icon> casillasOcupadas = new HashMap<>();
@@ -365,19 +412,40 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 }
             }
 
-            // 2. Limpiar todos los botones y luego dibujar
+            // 2. Limpiar completamente el tablero antes de redibujar.
             for (JButton boton : botonesCasillas.values()) {
                 int idBoton = Integer.parseInt(boton.getActionCommand());
                 boolean esCasa = idBoton >= 101;
+                // Pone un hueco en las bases y null (vacío) en el resto.
                 boton.setIcon(esCasa ? new IconoDeHueco(boton.getWidth() - 10, boton.getHeight() - 15) : null);
+                boton.setBorderPainted(false); // También limpiamos cualquier borde residual.
+                
+                // Aseguramos que todas las casillas del tablero sean transparentes por defecto.
+                if (!esCasa) {
+                    limpiarBoton(idBoton);
+                }
             }
 
             // 3. Dibujar las fichas en sus nuevas posiciones
-            casillasOcupadas.forEach((id, icon) -> botonesCasillas.get(id).setIcon(icon));
-            casasOcupadas.forEach((id, icon) -> botonesCasillas.get(id).setIcon(icon));
+            casillasOcupadas.forEach((id, icon) -> {
+                JButton boton = botonesCasillas.get(id);
+                if (boton != null) {
+                    boton.setIcon(icon);
+                    boton.setVisible(true); // Aseguramos que sea visible
+                    boton.setEnabled(true); // Aseguramos que se pueda clickear
+                }
+            });
+            casasOcupadas.forEach((id, icon) -> {
+                JButton boton = botonesCasillas.get(id);
+                if (boton != null) boton.setIcon(icon);
+            });
 
             // 3. Actualizar los mapas de estado internos
-            this.fichasPorJugadorActuales = fichasPorJugador; // Actualizamos la referencia
+            if (fichasPorJugador != null) {
+                this.fichasPorJugadorActuales = fichasPorJugador;
+            } else {
+                this.fichasPorJugadorActuales.clear();
+            }
             mapaPosicionFichas.clear(); // Limpiamos el mapa de posiciones para reconstruirlo
             mapaColorDeFicha.clear(); // Limpiamos el mapa de colores para reconstruirlo
             for (Map.Entry<UUID, List<com.mycompany.parchismvc.Model.Ficha>> entry : fichasPorJugador.entrySet()) {
@@ -511,8 +579,8 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 int indiceFicha = getIndiceDeFicha(idFichaMovida, fichasPorJugadorActuales); //Buscamos el indice de la ficha
                 onMoveListener.accept(indiceFicha, idCasillaDestino);
             }
+            limpiarResaltados(); // Limpiamos todos los resaltados inmediatamente después de ejecutar la acción.
         };
-        limpiarResaltados(); // Limpiamos resaltados de víctimas (rojo) antes de la acción.
 
         // Si hay una ficha en el destino (es una captura potencial)
         if (idFichaEnDestino != null) {
@@ -560,7 +628,10 @@ public class FondoBGTablero extends ImageBackgroundPanel {
      * @param botonFicha El botón a seleccionar.
      */
     private void seleccionarFicha(JButton botonFicha) {
-        limpiarResaltados(); // Limpia cualquier selección anterior.
+        // Limpiamos solo los bordes de las fichas, pero no las casillas de destino.
+        for (JButton boton : botonesCasillas.values()) {
+            boton.setBorderPainted(false);
+        }
         botonFichaSeleccionada = botonFicha;
         botonFichaSeleccionada.setBorder(javax.swing.BorderFactory.createLineBorder(Color.CYAN, 3));
         botonFichaSeleccionada.setBorderPainted(true);
@@ -595,7 +666,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
 
         // Movemos la ficha al destino
         destino.setIcon(fichaIcon);
-        destino.setContentAreaFilled(false);
+        destino.setContentAreaFilled(false); // Siempre transparente para mostrar el tablero
         
         repaint();
 
@@ -664,7 +735,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 ((Timer) ae.getSource()).stop();
                 remove(fichaAnimada);
                 destino.setIcon(fichaIcon);
-                destino.setContentAreaFilled(false);
+                destino.setContentAreaFilled(false); // Aseguramos que la casilla de destino siga siendo transparente
                 this.setEnabled(true);
                 repaint();
                 if (onAnimationEnd != null) {
@@ -718,7 +789,57 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         for (JButton boton : botonesCasillas.values()) {
             boton.setBorderPainted(false);
         }
+        limpiarCasillasDeTablero(); // Ocultamos y limpiamos las casillas de destino.
         botonFichaSeleccionada = null;
+    }
+
+    /**
+     * Oculta y deshabilita todas las casillas del tablero que no tienen una ficha.
+     * Esto se usa para limpiar las casillas de destino resaltadas después de un movimiento.
+     */
+    public void limpiarCasillasDeTablero() {
+        for (Map.Entry<Integer, JButton> entry : botonesCasillas.entrySet()) {
+            int idCasilla = entry.getKey();
+            JButton boton = entry.getValue();
+
+            // Solo afecta a las casillas del tablero (ID < 101) que estén vacías.
+            if (idCasilla < 101 && boton.isVisible()) {
+                limpiarBoton(idCasilla);
+            }
+        }
+        repaint();
+    }
+
+    public void resaltarFichasMovibles(int valorDado, ColorJugador colorDelTurno) {
+        limpiarResaltados();
+        fichasPorJugadorActuales.values().stream()
+            .flatMap(List::stream)
+            .filter(ficha -> getColorDeFicha(ficha.id) == colorDelTurno)
+            .forEach(ficha -> {
+                boolean puedeMover = false;
+                if (ficha.posicion == -1) { // En base
+                    if (valorDado == 5) puedeMover = true;
+                } else { // En tablero o pasillo
+                    puedeMover = true; // Asumimos que siempre puede moverse, la lógica de bloqueo está en el servidor.
+                }
+
+                if (puedeMover) {
+                    int pos = ficha.posicion;
+                    int idBoton = (pos == -1) ? getBotonCasaIdDeFicha(ficha.id, getIndiceDeFicha(ficha.id, fichasPorJugadorActuales), colorDelTurno) : pos;
+                    JButton botonFicha = botonesCasillas.get(idBoton);
+                    if (botonFicha != null) {
+                        Color glowColor = switch(colorDelTurno) {
+                            case ROJO -> new Color(255, 100, 100);
+                            case AZUL -> new Color(100, 150, 255);
+                            case VERDE -> new Color(100, 255, 150);
+                            case AMARILLO -> new Color(255, 255, 100);
+                        };
+                        botonFicha.setBorder(BorderFactory.createLineBorder(glowColor, 3));
+                        botonFicha.setBorderPainted(true);
+                    }
+                }
+            });
+        repaint();
     }
 
     private String getIconNameForFicha(int idFicha) {

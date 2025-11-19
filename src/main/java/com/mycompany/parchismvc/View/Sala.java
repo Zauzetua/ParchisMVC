@@ -104,7 +104,7 @@ public class Sala extends JFrame implements GameEvents {
         if (sala.estado == com.mycompany.parchismvc.Model.EstadoSala.JUGANDO) {
             Juego juegoFrame = new Juego(controlador, miId);
             controlador.setEvents(juegoFrame); // ¡IMPORTANTE! Transferir el control de eventos a la nueva ventana.
-            juegoFrame.actualizarJugadores(sala.jugadores, turnoDe, miId); // Pasamos la lista de jugadores, el turno y el ID local
+            juegoFrame.onEstado(sala, turnoDe, miId); // Inicializamos la ventana de juego con el estado actual
             juegoFrame.setVisible(true);
             this.dispose(); // Cerramos la ventana de la sala
             return; // Salimos del método para no actualizar la UI de la sala que ya se cerró

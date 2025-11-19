@@ -138,6 +138,7 @@ public class RegistroJF extends javax.swing.JFrame {
         jButton2 = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
         FondoPanel.setBackground(new java.awt.Color(0, 153, 153));
 

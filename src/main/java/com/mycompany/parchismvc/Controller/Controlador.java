@@ -32,6 +32,7 @@ public class Controlador {
     private String salaId;
     private volatile Sala salaCache;       // ultimo snapshot del servidor
     private volatile UUID turnoCache;      // ultimo turno reportado
+    private int ultimoValorDado = 0;
 
     public Controlador(ServicioJuego servicio) {
         this.servicio = servicio;
@@ -54,6 +55,9 @@ public class Controlador {
     public UUID getMiId(){ return miId; }
     public Sala getSalaCache(){ return salaCache; }
     public UUID getTurnoCache(){ return turnoCache; }
+    public int getUltimoValorDado() {
+        return ultimoValorDado;
+    }
 
     // Esperas sincronas (para que tu Vista funcione igual que local)
     private CompletableFuture<MensajeUnido> pendingUnido;
@@ -228,14 +232,15 @@ public class Controlador {
         if (servicio != null) {
             return servicio.moverFicha(jugadorId, indiceFicha);
         }
-        try {
-            pendingResultado = new CompletableFuture<>();
-            red.enviar(new com.mycompany.parchismvc.net.dto.MoverCmd(jugadorId, indiceFicha));
-            var r = pendingResultado.get(5, TimeUnit.SECONDS);
-            return r.mensaje;
-        } catch (Exception e) {
-            return "Error al mover: " + e.getMessage();
-        }
+        // Se ejecuta en un hilo separado para no bloquear la UI de Swing.
+        new Thread(() -> {
+            try {
+                red.enviar(new com.mycompany.parchismvc.net.dto.MoverCmd(jugadorId, indiceFicha));
+            } catch (Exception e) {
+                if(events!=null) events.onError("Error al mover: " + e.getMessage());
+            }
+        }).start();
+        return "Movimiento enviado..."; // Devolvemos un mensaje inmediato.
     }
 
     /**
@@ -383,6 +388,7 @@ public class Controlador {
                     if (pendingDado != null && !pendingDado.isDone()) {
                         pendingDado.complete(d);
                     }
+                    this.ultimoValorDado = d.valor;
                     if (vista != null) {
                     }
                     if(events!=null) events.onDado(d.jugadorId, d.valor);
@@ -391,8 +397,7 @@ public class Controlador {
                 case ESTADO -> {
                     var est = (MensajeEstado) m;
                     this.salaCache = est.sala;
-                    this.turnoCache = est.turnoDe;
-                    Vista.actualizarEstado(salaCache, turnoCache, miId);
+                    this.turnoCache = est.turnoDe;                    
                     if(events!=null) events.onEstado(salaCache, turnoCache, miId);
 
                     if (vista != null) {

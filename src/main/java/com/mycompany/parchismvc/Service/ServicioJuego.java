@@ -210,7 +210,11 @@ public class ServicioJuego {
         tieneTurnoExtra.clear();
         s.ganador = null;
         
-        for (Jugador j : sala().jugadores) j.listo = false;
+        for (Jugador j : s.jugadores) {
+            j.listo = false;
+        }
+        // NOTA: Aquí es donde se debería notificar a todos los clientes del nuevo estado.
+        // Como no tenemos acceso al despachador de red aquí, este es un cambio conceptual.
     }
 
     /**
@@ -296,50 +300,56 @@ public class ServicioJuego {
         }
 
         if (f.estado == EstadoFicha.EN_TABLERO) {
-            // Lógica para movimiento en el tablero principal o entrada al pasillo final
-            if (f.posicion <= 68) { 
-                int entradaPasillo = getCasillaEntradaPasillo(actual.color);
+            // CASO ESPECIAL: La ficha está en la casilla de entrada a su pasillo.
+            int entradaPasillo = getCasillaEntradaPasillo(actual.color);
+            if (f.posicion == entradaPasillo) {
                 int primerPasoPasillo = getPrimerPasoPasillo(actual.color);
                 int meta = getMeta(actual.color);
+                int destino = primerPasoPasillo + valor - 1; // -1 porque el primer paso ya se cuenta
+                if (destino > meta) { // Rebote
+                    destino = meta - (destino - meta);
+                }
+                f.posicion = destino;
+                pasarTurno();
+                return "Ficha entra al pasillo y se mueve a " + f.posicion;
+            }
 
-                // Comprobamos si la ficha puede entrar al pasillo
-                int pasosRestantes = valor;
+            // Lógica para movimiento en el tablero principal o entrada al pasillo final
+            if (f.posicion <= 68) { 
+                // Comprobamos si el movimiento lleva a la ficha a la entrada de su pasillo o más allá.
                 for (int i = 1; i <= valor; i++) {
                     int posIntermedia = (f.posicion - 1 + i) % TAM_TABLERO + 1;
                     if (posIntermedia == entradaPasillo) {
-                        pasosRestantes = valor - i + 1; // Corregido: +1 porque la entrada cuenta como un paso
-                        int posFinalPasillo = primerPasoPasillo + pasosRestantes;
-                        if (posFinalPasillo > meta) { // Rebote
-                            posFinalPasillo = meta - (posFinalPasillo - meta);
-                        }
-                        f.posicion = posFinalPasillo;
+                        // La ficha ha llegado a la entrada del pasillo.
+                        int pasosDentroDelPasillo = valor - i;
+                        int destinoFinal = getPrimerPasoPasillo(actual.color) + pasosDentroDelPasillo;
+                        f.posicion = destinoFinal;
                         pasarTurno();
                         return "Ficha entra al pasillo y se mueve a " + f.posicion;
                     }
                 }
 
-                // Si no entra al pasillo, es un movimiento normal en el tablero
-                int destino = (f.posicion - 1 + valor) % TAM_TABLERO + 1;
-                for (int paso = 1; paso <= valor; paso++) {
-                    int mod = (f.posicion - 1 + paso) % TAM_TABLERO + 1;
-                    if (posicionBloqueadaPorRival(mod, actual.id)) {
-                        pasarTurno();
-                        return "Movimiento bloqueado por bloqueo rival en casilla " + mod + ". Turno terminado.";
-                    }
+                // Si no se cruza con la entrada del pasillo, es un movimiento normal.
+                int destinoNormal = (f.posicion - 1 + valor) % TAM_TABLERO + 1;
+                if (posicionBloqueadaPorRival(destinoNormal, actual.id)) {
+                    pasarTurno();
+                    return "Movimiento bloqueado por bloqueo rival en casilla " + destinoNormal + ". Turno terminado.";
                 }
-                f.posicion = destino;
+                f.posicion = destinoNormal;
                 aplicarCapturaYBloqueoAlColocar(f);
                 pasarTurno();
                 return "Ficha movida a posición " + f.posicion;
             } 
             // Lógica para movimiento DENTRO del pasillo final
-            else {
+            else { // La ficha ya está en el pasillo (pos > 68)
                 int meta = getMeta(actual.color);
                 int destino = f.posicion + valor;
+
                 if (destino > meta) { // Rebote
                     destino = meta - (destino - meta);
                 } else if (destino == meta) {
                     f.estado = EstadoFicha.CASA;
+                    f.posicion = -1; // Marcar como en casa
                 }
                 f.posicion = destino;
                 pasarTurno();

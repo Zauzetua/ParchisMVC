@@ -264,7 +264,7 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
         SwingUtilities.invokeLater(() -> {
             actualizarJugadores(sala.jugadores, turnoDe, this.miId);
             // Sincronizamos el estado visual de las fichas en el tablero.
-            ((com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero) JPTablero).actualizarEstadoFichas(sala.fichasPorJugador, this.mapaColoresJugadores);
+            ((com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero) JPTablero).actualizarEstadoFichas(sala.fichasPorJugador, this.mapaColoresJugadores, turnoDe, this.miId);
         });
     }
 
@@ -285,7 +285,8 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
             ColorJugador colorDelTurno = mapaColoresJugadores.get(jugadorId);
 
             if (colorDelTurno != null) {
-                // ¡AQUÍ ESTÁ LA MAGIA! Pintamos las casillas a partir de la salida de su color.
+                // Resaltamos las fichas que el jugador puede mover con este dado.
+                ((com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero) JPTablero).resaltarFichasMovibles(valor, colorDelTurno);
                 ((com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero) JPTablero).mostrarCasillasDestino(valor, colorDelTurno);
             }
         });
