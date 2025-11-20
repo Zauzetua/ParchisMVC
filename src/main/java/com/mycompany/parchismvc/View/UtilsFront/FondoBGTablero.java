@@ -107,11 +107,21 @@ public class FondoBGTablero extends ImageBackgroundPanel {
 
         @Override
         public void paintIcon(Component c, Graphics g, int x, int y) {
-            int halfWidth = width / 2;
-            // Dibuja el primer icono en la mitad izquierda
-            icon1.paintIcon(c, g, x, y);
-            // Dibuja el segundo icono en la mitad derecha
-            icon2.paintIcon(c, g, x + halfWidth - 5, y);
+            // Desplazamiento global para centrar mejor el par de fichas.
+            int offsetX = -6;
+
+            // Si la casilla es más alta que ancha (pasillos horizontales del tablero)
+            if (height > width) {
+                int halfHeight = height / 3;
+                // Dibuja el primer icono en la mitad superior
+                icon1.paintIcon(c, g, x + offsetX, y);
+                // Dibuja el segundo icono en la mitad inferior
+                icon2.paintIcon(c, g, x + offsetX, y + halfHeight - 5);
+            } else { // Si la casilla es más ancha que alta (pasillos verticales)
+                int halfWidth = width / 2;
+                icon1.paintIcon(c, g, x + offsetX, y);
+                icon2.paintIcon(c, g, x + offsetX + halfWidth - 5, y);
+            }
         }
 
         @Override
@@ -122,6 +132,37 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         @Override
         public int getIconHeight() {
             return height;
+        }
+    }
+
+    /**
+     * Clase interna que envuelve un Icon para permitir un desplazamiento (offset)
+     * al dibujarlo. Esto es útil para centrar visualmente los iconos en botones
+     * que no son cuadrados.
+     */
+    private class IconoWrapper implements Icon {
+        private final Icon original;
+        private final int offsetX;
+
+        public IconoWrapper(Icon original, int offsetX) {
+            this.original = original;
+            this.offsetX = offsetX;
+        }
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            // Aplica el desplazamiento en el eje X al dibujar el icono original.
+            original.paintIcon(c, g, x + offsetX, y);
+        }
+
+        @Override
+        public int getIconWidth() {
+            return original.getIconWidth();
+        }
+
+        @Override
+        public int getIconHeight() {
+            return original.getIconHeight();
         }
     }
 
@@ -482,6 +523,9 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                         // Si hay dos o más fichas, crea un icono compuesto con las dos primeras.
                         Icon iconoCompuesto = new IconoCompuesto(icons.get(0), icons.get(1), boton.getWidth(), boton.getHeight());
                         boton.setIcon(iconoCompuesto);
+                        // Al ser un bloqueo, le añadimos un borde verde.
+                        boton.setBorder(BorderFactory.createLineBorder(Color.GREEN, 3));
+                        boton.setBorderPainted(true);
                     }
                     boton.setVisible(true); // Aseguramos que sea visible
                     boton.setEnabled(true); // Aseguramos que se pueda clickear
@@ -530,7 +574,13 @@ public class FondoBGTablero extends ImageBackgroundPanel {
 
         ImageIcon icon = getScaledIcon(getIconNameForFicha(idBotonCasa), iconWidth, iconHeight);
 
-        return icon;
+        // Si es una casilla del tablero, aplicamos un desplazamiento para centrar mejor la ficha.
+        if (esCasillaDeTablero) {
+            // Movemos la ficha 2 píxeles a la izquierda para que se vea más centrada.
+            return new IconoWrapper(icon, -2);
+        } else {
+            return icon;
+        }
 
     }
 
@@ -762,26 +812,32 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 boolean esSalidaDeCasa = idCasillaOrigen >= 101;
                 boolean esCasillaDeSalidaPropia = idCasillaDestino == getCasillaDeSalida(colorFichaMovida);
 
-                if (esSalidaDeCasa && esCasillaDeSalidaPropia) {
-                    // Mostramos un menú para que el jugador elija.
-                    JPopupMenu menuOpciones = new JPopupMenu();
-                    
-                    JMenuItem opcionBloqueo = new JMenuItem("Hacer bloqueo");
-                    opcionBloqueo.addActionListener(e -> {
-                        moverFichaPrincipal.run(); // Ejecuta el movimiento para formar el bloqueo.
-                    });
-                    menuOpciones.add(opcionBloqueo);
+                if (esSalidaDeCasa && esCasillaDeSalidaPropia) { // Si es el caso especial de salir de casa...
+                    // Contamos cuántas fichas hay ya en la casilla de destino.
+                    long fichasEnDestino = mapaPosicionFichas.values().stream()
+                            .filter(pos -> pos.equals(idCasillaDestino))
+                            .count();
 
-                    JMenuItem opcionSeleccionar = new JMenuItem("Seleccionar ficha");
-                    opcionSeleccionar.addActionListener(e -> {
-                        // Limpia la selección actual y selecciona la ficha que ya estaba en el tablero.
-                        limpiarResaltados();
-                        seleccionarFicha(destinoBotonFinal);
-                    });
-                    menuOpciones.add(opcionSeleccionar);
+                    // El menú solo aparece si hay exactamente UNA ficha en el destino.
+                    if (fichasEnDestino == 1) {
+                        // Mostramos un menú para que el jugador elija.
+                        JPopupMenu menuOpciones = new JPopupMenu();
+                        
+                        JMenuItem opcionBloqueo = new JMenuItem("Hacer bloqueo");
+                        opcionBloqueo.addActionListener(e -> {
+                            moverFichaPrincipal.run(); // Ejecuta el movimiento para formar el bloqueo.
+                        });
+                        menuOpciones.add(opcionBloqueo);
 
-                    // Mostramos el menú donde el jugador hizo clic.
-                    menuOpciones.show(destinoBotonFinal, destinoBotonFinal.getWidth() / 2, destinoBotonFinal.getHeight() / 2);
+                        JMenuItem opcionSeleccionar = new JMenuItem("Seleccionar ficha");
+                        opcionSeleccionar.addActionListener(e -> {
+                            limpiarResaltados();
+                            seleccionarFicha(destinoBotonFinal);
+                        });
+                        menuOpciones.add(opcionSeleccionar);
+
+                        menuOpciones.show(destinoBotonFinal, destinoBotonFinal.getWidth() / 2, destinoBotonFinal.getHeight() / 2);
+                    } // Si hay 0 o 2+ fichas, no hacemos nada, el movimiento no es válido o no aplica el menú.
                 } else {
                     // Si es un bloqueo en cualquier otra casilla, se forma automáticamente.
                     moverFichaPrincipal.run();
@@ -1193,15 +1249,22 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 int originalHeight = originalImage.getHeight();
                 double aspectRatio = (double) originalWidth / originalHeight;
 
-                int newWidth = targetWidth;
-                int newHeight = (int) (newWidth / aspectRatio);
-
-                if (newHeight > targetHeight) { // Si se pasa de alto, ajustamos por altura
+                int newWidth, newHeight;
+                
+                // Si la casilla es más alta que ancha (horizontal en el tablero),
+                // escalamos basándonos en el ancho para mantener la proporción.
+                if (targetHeight > targetWidth) {
+                    newWidth = targetWidth;
+                    newHeight = (int) (newWidth / aspectRatio);
+                } else { // Para casillas verticales o cuadradas, escalamos por altura.
                     newHeight = targetHeight;
                     newWidth = (int) (newHeight * aspectRatio);
+                    if (newWidth > targetWidth) { // Si se pasa de ancho, reajustamos por ancho.
+                        newWidth = targetWidth;
+                        newHeight = (int) (newWidth / aspectRatio);
+                    }
                 }
 
-                // Usamos Graphics2D para un reescalado de mayor calidad
                 Image scaledImage = originalImage.getScaledInstance(newWidth, newHeight, Image.SCALE_SMOOTH);
                 return new ImageIcon(scaledImage);
             } else {
