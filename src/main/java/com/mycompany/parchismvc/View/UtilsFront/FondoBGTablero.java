@@ -12,6 +12,7 @@ import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.RenderingHints;
 import javax.swing.ImageIcon;
+import java.awt.image.BufferedImage;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.MouseAdapter;
@@ -27,6 +28,8 @@ import javax.swing.Timer;
 import javax.swing.JButton;
 import javax.swing.Icon;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
@@ -73,6 +76,42 @@ public class FondoBGTablero extends ImageBackgroundPanel {
             g2d.fillOval(x, y, width - 4, height - 4);
 
             g2d.dispose();
+        }
+
+        @Override
+        public int getIconWidth() {
+            return width;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return height;
+        }
+    }
+
+    /**
+     * Clase interna para dibujar dos iconos de ficha en una misma casilla.
+     */
+    private class IconoCompuesto implements Icon {
+        private final Icon icon1;
+        private final Icon icon2;
+        private final int width;
+        private final int height;
+
+        public IconoCompuesto(Icon icon1, Icon icon2, int width, int height) {
+            this.icon1 = icon1;
+            this.icon2 = icon2;
+            this.width = width;
+            this.height = height;
+        }
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            int halfWidth = width / 2;
+            // Dibuja el primer icono en la mitad izquierda
+            icon1.paintIcon(c, g, x, y);
+            // Dibuja el segundo icono en la mitad derecha
+            icon2.paintIcon(c, g, x + halfWidth - 5, y);
         }
 
         @Override
@@ -389,7 +428,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
             if (nuevosColores != null && !nuevosColores.isEmpty()) this.mapaColoresJugadores.putAll(nuevosColores);
 
             // Mapa para saber qué casillas del tablero (1-100) estarán ocupadas
-            Map<Integer, Icon> casillasOcupadas = new HashMap<>();
+            Map<Integer, java.util.List<Icon>> casillasOcupadas = new HashMap<>();
             // Mapa para saber qué casas (101-116) estarán ocupadas
             Map<Integer, Icon> casasOcupadas = new HashMap<>();
 
@@ -413,7 +452,8 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                     if (idCasillaActual == -1) { // La ficha está en casa (posición -1)
                         casasOcupadas.put(idBotonCasa, icon);
                     } else { // La ficha está en el tablero
-                        casillasOcupadas.put(idCasillaActual, icon);
+                        casillasOcupadas.computeIfAbsent(idCasillaActual, k -> new java.util.ArrayList<>()).add(icon);
+
                     }
                 }
             }
@@ -433,12 +473,21 @@ public class FondoBGTablero extends ImageBackgroundPanel {
             }
 
             // 3. Dibujar las fichas en sus nuevas posiciones
-            casillasOcupadas.forEach((id, icon) -> {
+            casillasOcupadas.forEach((id, icons) -> {
                 JButton boton = botonesCasillas.get(id);
                 if (boton != null) {
-                    boton.setIcon(icon);
+                    if (icons.size() == 1) {
+                        boton.setIcon(icons.get(0));
+                    } else if (icons.size() >= 2) {
+                        // Si hay dos o más fichas, crea un icono compuesto con las dos primeras.
+                        Icon iconoCompuesto = new IconoCompuesto(icons.get(0), icons.get(1), boton.getWidth(), boton.getHeight());
+                        boton.setIcon(iconoCompuesto);
+                    }
                     boton.setVisible(true); // Aseguramos que sea visible
                     boton.setEnabled(true); // Aseguramos que se pueda clickear
+                    boton.setOpaque(false);
+                    boton.setContentAreaFilled(false);
+
                 }
             });
             casasOcupadas.forEach((id, icon) -> {
@@ -467,13 +516,39 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         });
     }
 
+    private Icon getIconForFicha(int idBotonCasa, int idCasillaDestino) {
+        // Usamos la casilla de destino para determinar el tamaño, no la casa original.
+        JButton botonDestino = botonesCasillas.get(idCasillaDestino);
+        if (botonDestino == null) {
+            System.err.println("getIconForFicha: No se encontró el botón para el ID de casilla " + idCasillaDestino);
+            return null; // Devolver null para evitar NullPointerException
+        }
+        // Para las casillas del tablero, las fichas deben ser más pequeñas para que quepan dos.
+        boolean esCasillaDeTablero = idCasillaDestino < 101;
+        int iconWidth = esCasillaDeTablero ? botonDestino.getWidth() / 2 : botonDestino.getWidth();
+        int iconHeight = botonDestino.getHeight();
+
+        ImageIcon icon = getScaledIcon(getIconNameForFicha(idBotonCasa), iconWidth, iconHeight);
+
+        return icon;
+
+    }
+
     private Icon getIconForFicha(int idBotonCasa) {
         JButton casaOriginal = botonesCasillas.get(idBotonCasa);
         if (casaOriginal == null) {
             System.err.println("getIconForFicha: No se encontró el botón para el ID de casa " + idBotonCasa);
             return null; // Devolver null para evitar NullPointerException
         }
-        return getScaledIcon(getIconNameForFicha(idBotonCasa), casaOriginal.getWidth(), casaOriginal.getHeight());
+        // Para las casillas del tablero, las fichas deben ser más pequeñas para que quepan dos.
+        boolean esCasillaDeTablero = casaOriginal.getWidth() < 30;
+        int iconWidth = esCasillaDeTablero ? casaOriginal.getWidth() / 2 : casaOriginal.getWidth();
+        int iconHeight = casaOriginal.getHeight();
+
+        ImageIcon icon = getScaledIcon(getIconNameForFicha(idBotonCasa), iconWidth, iconHeight);
+
+        return icon;
+
     }
 
     private int getBotonCasaIdDeFicha(UUID idFicha, int indiceFicha, ColorJugador color) {
@@ -490,13 +565,59 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         return mapaColorDeFicha.get(idFicha);
     }
 
-    private UUID getFichaEnCasilla(int idCasilla) {
-        // Primero, busca en el mapa de posiciones actual.
+    /**
+     * Versión simple que solo busca la primera ficha en una casilla o casa. No tiene lógica recursiva.
+     */
+    private UUID getFichaEnCasillaSimple(int idCasilla) {
+        // Busca la primera ficha en esa casilla del tablero.
         UUID fichaId = mapaPosicionFichas.entrySet().stream()
                 .filter(entry -> entry.getValue().equals(idCasilla))
                 .map(Map.Entry::getKey)
                 .findFirst()
                 .orElse(null);
+
+        // Si no se encuentra y la casilla es una casa (ID >= 101), busca qué ficha corresponde a esa casa.
+        if (fichaId == null && idCasilla >= 101) {
+            for (Map.Entry<UUID, List<com.mycompany.parchismvc.Model.Ficha>> entry : fichasPorJugadorActuales.entrySet()) {
+                List<com.mycompany.parchismvc.Model.Ficha> fichas = entry.getValue();
+                for (int i = 0; i < fichas.size(); i++) {
+                    com.mycompany.parchismvc.Model.Ficha ficha = fichas.get(i);
+                    ColorJugador color = mapaColoresJugadores.get(entry.getKey());
+                    if (getBotonCasaIdDeFicha(ficha.id, i, color) == idCasilla) return ficha.id;
+                }
+            }
+        }
+        return fichaId;
+    }
+
+    private UUID getFichaEnCasilla(int idCasilla) {
+        // Busca todas las fichas en esa casilla.
+        java.util.List<UUID> fichasEnCasilla = mapaPosicionFichas.entrySet().stream()
+                .filter(entry -> entry.getValue().equals(idCasilla))
+                .map(Map.Entry::getKey)
+                .collect(java.util.stream.Collectors.toList());
+
+        UUID fichaId = null;
+        if (!fichasEnCasilla.isEmpty()) {
+            // Si hay una ficha seleccionada, priorizamos encontrar la otra ficha (la víctima).
+            if (botonFichaSeleccionada != null) {
+                // Usamos la versión simple para evitar la recursión infinita.
+                UUID fichaSeleccionadaId = getFichaEnCasillaSimple(Integer.parseInt(botonFichaSeleccionada.getActionCommand()));
+                
+                // Si hay más de una ficha, devolvemos la que NO está seleccionada.
+                if (fichasEnCasilla.size() > 1) {
+                    fichaId = fichasEnCasilla.stream()
+                            .filter(id -> !id.equals(fichaSeleccionadaId))
+                            .findFirst()
+                            .orElse(fichasEnCasilla.get(0)); // Fallback por si algo va mal
+                } else {
+                    fichaId = fichasEnCasilla.get(0);
+                }
+            } else {
+                // Si no hay nada seleccionado, devolvemos la primera que encontremos.
+                fichaId = fichasEnCasilla.get(0);
+            }
+        }
 
         // Si no se encuentra y la casilla es una casa (ID >= 101),
         // busca qué ficha corresponde a esa casa.
@@ -533,7 +654,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
 
             // --- ESCENARIO 1: SELECCIONAR UNA FICHA PROPIA ---
             if (botonFichaSeleccionada == null) {
-                if (boton.getIcon() != null && !(boton.getIcon() instanceof IconoDeHueco)) {
+                if (boton.getIcon() != null && !(boton.getIcon() instanceof IconoDeHueco) && !(boton.getIcon() instanceof IconoCompuesto)) {
                     UUID fichaId = getFichaEnCasilla(Integer.parseInt(boton.getActionCommand()));
                     // Solo permite seleccionar fichas propias
                     ColorJugador colorFicha = getColorDeFicha(fichaId);
@@ -542,13 +663,37 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                         seleccionarFicha(boton);
                     }
                 }
+                // Si es un icono compuesto, no permitimos la selección directa por ahora
+                // para simplificar la lógica. El servidor se encargará de gestionar los bloqueos.
+                else if (boton.getIcon() instanceof IconoCompuesto) {
+                    // Podrías implementar una lógica más compleja aquí si fuera necesario,
+                    // como un menú contextual para elegir qué ficha mover.
+                    // Por ahora, no hacemos nada para evitar movimientos ambiguos.
+                }
+
             } else {
                 // --- ESCENARIO 2: DESELECCIONAR O MOVER ---
-                if (botonFichaSeleccionada == boton) {
-                    limpiarResaltados();
+                // PRIORIDAD 1: Comprobar si se ha hecho clic en una casilla de destino válida.
+                // Un destino es válido si está visible y habilitado (resaltado en amarillo o rojo).
+                if (boton.isVisible() && boton.isEnabled()) {
+                    ejecutarMovimientoOCaptura(boton);
                 } else {
-                    if (boton.isVisible() && boton.isEnabled()) {
-                        ejecutarMovimientoOCaptura(boton);
+                    // PRIORIDAD 2: Si no es un destino, comprobar si es otra ficha propia para cambiar la selección.
+                    UUID fichaClicadaId = getFichaEnCasilla(Integer.parseInt(boton.getActionCommand()));
+                    ColorJugador miColor = mapaColoresJugadores.get(miId);
+
+                    if (fichaClicadaId != null && miColor == getColorDeFicha(fichaClicadaId)) {
+                        // Si es la misma ficha, se deselecciona, pero se mantienen los destinos.
+                        if (botonFichaSeleccionada == boton) {
+                            boton.setBorderPainted(false);
+                            botonFichaSeleccionada = null;
+                        } else {
+                            // Si es otra ficha propia, se cambia la selección.
+                            seleccionarFicha(boton);
+                        }
+                    } else {
+                        // Si se hace clic en cualquier otro lugar, se limpia todo.
+                        limpiarResaltados();
                     }
                 }
             }
@@ -595,10 +740,12 @@ public class FondoBGTablero extends ImageBackgroundPanel {
     
         // Si hay una ficha en el destino (es una captura potencial)
         if (idFichaEnDestino != null) {
-            // Verificamos que sea de un color diferente Y que la víctima esté en el tablero (no en su casa).
-            if (colorFichaMovida != getColorDeFicha(idFichaEnDestino) && idCasillaDestino < 101) {
+            ColorJugador colorFichaEnDestino = getColorDeFicha(idFichaEnDestino);
+            // Si la ficha en el destino es de un color diferente (es una captura)
+            if (colorFichaMovida != colorFichaEnDestino) {
                 System.out.println("¡COMER! Ficha " + idFichaMovida + " come a " + idFichaEnDestino);
                 JButton victimaBoton = botonesCasillas.get(idCasillaDestino);
+                if (victimaBoton == null) { return; } // Seguridad
                 
                 // Obtenemos el botón de la casa de la víctima para la animación de retorno.
                 ColorJugador colorVictima = getColorDeFicha(idFichaEnDestino);
@@ -609,8 +756,37 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                     // Cuando la víctima llega a casa, movemos la ficha principal.
                     moverFichaPrincipal.run();
                 });
+            } else { // Si es del mismo color, es un movimiento para formar un bloqueo.
+                
+                // CASO ESPECIAL: Salir de casa a una casilla de salida ya ocupada por una ficha propia.
+                boolean esSalidaDeCasa = idCasillaOrigen >= 101;
+                boolean esCasillaDeSalidaPropia = idCasillaDestino == getCasillaDeSalida(colorFichaMovida);
+
+                if (esSalidaDeCasa && esCasillaDeSalidaPropia) {
+                    // Mostramos un menú para que el jugador elija.
+                    JPopupMenu menuOpciones = new JPopupMenu();
+                    
+                    JMenuItem opcionBloqueo = new JMenuItem("Hacer bloqueo");
+                    opcionBloqueo.addActionListener(e -> {
+                        moverFichaPrincipal.run(); // Ejecuta el movimiento para formar el bloqueo.
+                    });
+                    menuOpciones.add(opcionBloqueo);
+
+                    JMenuItem opcionSeleccionar = new JMenuItem("Seleccionar ficha");
+                    opcionSeleccionar.addActionListener(e -> {
+                        // Limpia la selección actual y selecciona la ficha que ya estaba en el tablero.
+                        limpiarResaltados();
+                        seleccionarFicha(destinoBotonFinal);
+                    });
+                    menuOpciones.add(opcionSeleccionar);
+
+                    // Mostramos el menú donde el jugador hizo clic.
+                    menuOpciones.show(destinoBotonFinal, destinoBotonFinal.getWidth() / 2, destinoBotonFinal.getHeight() / 2);
+                } else {
+                    // Si es un bloqueo en cualquier otra casilla, se forma automáticamente.
+                    moverFichaPrincipal.run();
+                }
             }
-            // Si es del mismo color, no hacemos nada.
         } else { // Si no hay ficha en el destino (es un movimiento a casilla vacía)
             moverFichaPrincipal.run();
         }
@@ -659,7 +835,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
      */
     private void teletransportarFicha(JButton origen, JButton destino, Runnable onMoveEnd) {
         final Icon fichaIcon = origen.getIcon();
-        if (fichaIcon == null || fichaIcon instanceof IconoDeHueco) { // Si no hay icono o es un hueco, no hay nada que mover.
+        if (fichaIcon == null || fichaIcon instanceof IconoDeHueco || fichaIcon instanceof IconoCompuesto) { // Si no hay icono o es un hueco, no hay nada que mover.
             if (onMoveEnd != null) {
                 onMoveEnd.run();
             }
@@ -700,7 +876,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
      */
     private void animarFicha(JButton origen, JButton destino, List<Integer> path, Runnable onAnimationEnd) {
         final Icon fichaIcon = origen.getIcon();
-        if (fichaIcon == null || fichaIcon instanceof IconoDeHueco) {
+        if (fichaIcon == null || fichaIcon instanceof IconoDeHueco || fichaIcon instanceof IconoCompuesto) {
             if (onAnimationEnd != null) {
                 onAnimationEnd.run(); // Si no hay ficha, ejecutar el callback y salir.
             }
@@ -1004,17 +1180,28 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         try {
             File imgFile = new File("src/main/resources/Assets/" + fileName);
             if (imgFile.exists()) {
-                ImageIcon originalIcon = new ImageIcon(imgFile.getAbsolutePath());
-                Image originalImage = originalIcon.getImage();
-                int originalWidth = originalIcon.getIconWidth();
-                int originalHeight = originalIcon.getIconHeight();
+                BufferedImage originalImage = javax.imageio.ImageIO.read(imgFile);
+
+                // Si el ancho objetivo es muy pequeño, no intentamos mantener el aspect ratio
+                // y simplemente forzamos el tamaño. Esto es para los iconos dobles.
+                if (targetWidth < 20) {
+                    Image scaledImage = originalImage.getScaledInstance(targetWidth, targetHeight, Image.SCALE_SMOOTH);
+                    return new ImageIcon(scaledImage);
+                }
+
+                int originalWidth = originalImage.getWidth();
+                int originalHeight = originalImage.getHeight();
                 double aspectRatio = (double) originalWidth / originalHeight;
+
                 int newWidth = targetWidth;
                 int newHeight = (int) (newWidth / aspectRatio);
-                if (newHeight > targetHeight) {
+
+                if (newHeight > targetHeight) { // Si se pasa de alto, ajustamos por altura
                     newHeight = targetHeight;
                     newWidth = (int) (newHeight * aspectRatio);
                 }
+
+                // Usamos Graphics2D para un reescalado de mayor calidad
                 Image scaledImage = originalImage.getScaledInstance(newWidth, newHeight, Image.SCALE_SMOOTH);
                 return new ImageIcon(scaledImage);
             } else {
