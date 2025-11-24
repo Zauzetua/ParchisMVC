@@ -42,6 +42,9 @@ public class FondoBGTablero extends ImageBackgroundPanel {
     // Variable para mantener la referencia a la ficha actualmente seleccionada
     private JButton botonFichaSeleccionada = null;
 
+    // Variable para identificar qué ficha de un bloqueo está activa.
+    private UUID fichaActivaEnBloqueo = null;
+
     // Timer para la animación de la ficha
     private Timer animator;
     
@@ -466,6 +469,10 @@ public class FondoBGTablero extends ImageBackgroundPanel {
             limpiarResaltados(); // Limpia cualquier selección o resaltado activo.
 
             // Actualiza el mapa de colores interno si se proporciona uno nuevo.
+        if (nuevosColores != null) {
+            this.mapaColoresJugadores.putAll(nuevosColores);
+        }
+
             if (nuevosColores != null && !nuevosColores.isEmpty()) this.mapaColoresJugadores.putAll(nuevosColores);
 
             // Mapa para saber qué casillas del tablero (1-100) estarán ocupadas
@@ -553,6 +560,25 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                     if (ficha == null) continue;
                     mapaPosicionFichas.put(ficha.id, ficha.posicion);
                     mapaColorDeFicha.put(ficha.id, this.mapaColoresJugadores.get(idJugador));
+                }
+            }
+
+            // Comprobar si hay un ganador después de actualizar el estado.
+            for (Map.Entry<UUID, List<com.mycompany.parchismvc.Model.Ficha>> entry : fichasPorJugador.entrySet()) {
+                UUID jugadorId = entry.getKey();
+                List<com.mycompany.parchismvc.Model.Ficha> fichas = entry.getValue();
+                ColorJugador color = this.mapaColoresJugadores.get(jugadorId);
+                if (color == null) continue;
+
+                int meta = getMeta(color);
+                long fichasEnMeta = fichas.stream()
+                                         .filter(f -> f != null && f.posicion == meta)
+                                         .count();
+
+                if (fichasEnMeta == 4) {
+                    // Si encontramos un ganador, mostramos la pantalla final y detenemos el procesamiento.
+                    mostrarPantallaFinal(jugadorId.equals(miId));
+                    return;
                 }
             }
 
@@ -649,6 +675,10 @@ public class FondoBGTablero extends ImageBackgroundPanel {
 
         UUID fichaId = null;
         if (!fichasEnCasilla.isEmpty()) {
+            // Si una ficha de un bloqueo fue seleccionada explícitamente, se devuelve esa.
+            if (fichaActivaEnBloqueo != null && fichasEnCasilla.contains(fichaActivaEnBloqueo)) {
+                return fichaActivaEnBloqueo;
+            }
             // Si hay una ficha seleccionada, priorizamos encontrar la otra ficha (la víctima).
             if (botonFichaSeleccionada != null) {
                 // Usamos la versión simple para evitar la recursión infinita.
@@ -713,12 +743,22 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                         seleccionarFicha(boton);
                     }
                 }
-                // Si es un icono compuesto, no permitimos la selección directa por ahora
-                // para simplificar la lógica. El servidor se encargará de gestionar los bloqueos.
                 else if (boton.getIcon() instanceof IconoCompuesto) {
-                    // Podrías implementar una lógica más compleja aquí si fuera necesario,
-                    // como un menú contextual para elegir qué ficha mover.
-                    // Por ahora, no hacemos nada para evitar movimientos ambiguos.
+                    // Lógica para seleccionar automáticamente una ficha de un bloqueo.
+                    int idCasilla = Integer.parseInt(boton.getActionCommand());
+                    List<UUID> fichasEnBloqueo = mapaPosicionFichas.entrySet().stream()
+                        .filter(entry -> entry.getValue().equals(idCasilla))
+                        .map(Map.Entry::getKey)
+                        .collect(java.util.stream.Collectors.toList());
+
+                    if (!fichasEnBloqueo.isEmpty()) {
+                        ColorJugador miColor = mapaColoresJugadores.get(miId);
+                        // Asegurarse de que el bloqueo sea del jugador actual.
+                        if (miColor != null && miColor == getColorDeFicha(fichasEnBloqueo.get(0))) {
+                            fichaActivaEnBloqueo = fichasEnBloqueo.get(0); // Elige la primera ficha por defecto.
+                            seleccionarFicha(boton);
+                        }
+                    }
                 }
 
             } else {
@@ -737,6 +777,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                         if (botonFichaSeleccionada == boton) {
                             boton.setBorderPainted(false);
                             botonFichaSeleccionada = null;
+                            fichaActivaEnBloqueo = null; // Limpiar selección de bloqueo
                         } else {
                             // Si es otra ficha propia, se cambia la selección.
                             seleccionarFicha(boton);
@@ -1099,6 +1140,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         }
         limpiarCasillasDeTablero(); // Ocultamos y limpiamos las casillas de destino.
         botonFichaSeleccionada = null;
+        fichaActivaEnBloqueo = null;
     }
 
     /**
@@ -1288,5 +1330,42 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         } catch (Exception e) {
             System.err.println("Error al cargar tablero desde disco: " + e.getMessage());
         }
+    }
+
+    /**
+     * Muestra una imagen de victoria o derrota a pantalla completa y cierra el juego después de un retardo.
+     * @param haGanado True si el jugador local ha ganado, false en caso contrario.
+     */
+    private void mostrarPantallaFinal(boolean haGanado) {
+        // Deshabilita todos los componentes para evitar más interacciones.
+        for (Component comp : getComponents()) {
+            comp.setEnabled(false);
+        }
+
+        String imageName = haGanado ? "VictoriaParchis.png" : "DerrotaParchis.png";
+        JLabel pantallaFinalLabel = new JLabel();
+
+        try {
+            File imgFile = new File("src/main/resources/Assets/" + imageName);
+            if (imgFile.exists()) {
+                BufferedImage img = javax.imageio.ImageIO.read(imgFile);
+                // Escala la imagen para que se ajuste al tamaño del panel.
+                Image scaledImg = img.getScaledInstance(this.getWidth(), this.getHeight(), Image.SCALE_SMOOTH);
+                pantallaFinalLabel.setIcon(new ImageIcon(scaledImg));
+            } else {
+                pantallaFinalLabel.setText(haGanado ? "¡VICTORIA!" : "DERROTA");
+            }
+        } catch (Exception e) {
+            System.err.println("Error al cargar la imagen final: " + e.getMessage());
+        }
+
+        pantallaFinalLabel.setBounds(0, 0, this.getWidth(), this.getHeight());
+        this.add(pantallaFinalLabel, 0); // Añade la etiqueta en la capa superior.
+        this.repaint();
+
+        // Crea un temporizador para cerrar el juego después de 3 segundos.
+        Timer closeTimer = new Timer(3000, e -> System.exit(0));
+        closeTimer.setRepeats(false); // Asegura que solo se ejecute una vez.
+        closeTimer.start();
     }
 }
