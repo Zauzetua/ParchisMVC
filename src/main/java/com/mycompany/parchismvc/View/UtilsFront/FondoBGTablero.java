@@ -800,7 +800,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
 
                 // PRIORIDAD 1: Comprobar si se ha hecho clic en una casilla de destino válida (resaltada).
                 // Esto tiene prioridad para permitir la formación de bloqueos.
-                if (boton.getBackground().getAlpha() > 0) { // Un destino válido tiene un fondo no transparente.
+                if (boton.isEnabled() && boton.getBackground().getAlpha() > 0) { // Un destino válido está habilitado y tiene un fondo no transparente.
                      ejecutarMovimientoOCaptura(boton);
                 } else {
                     // PRIORIDAD 2: Si no es un destino, comprobar si es otra ficha propia para cambiar la selección.
