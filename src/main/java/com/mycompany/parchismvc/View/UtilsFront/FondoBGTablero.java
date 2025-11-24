@@ -762,28 +762,37 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 }
 
             } else {
-                // --- ESCENARIO 2: DESELECCIONAR O MOVER ---
-                // PRIORIDAD 1: Comprobar si se ha hecho clic en una casilla de destino válida.
-                // Un destino es válido si está visible y habilitado (resaltado en amarillo o rojo).
-                if (boton.isVisible() && boton.isEnabled()) {
-                    ejecutarMovimientoOCaptura(boton);
+                // --- ESCENARIO 2: YA HAY UNA FICHA SELECCIONADA ---
+                final int idCasillaOrigen = Integer.parseInt(botonFichaSeleccionada.getActionCommand());
+                final int idCasillaClicada = Integer.parseInt(boton.getActionCommand());
+
+                // CASO ESPECIAL: Prevenir movimiento de base a base. Forzar cambio de selección.
+                boolean origenEnBase = idCasillaOrigen >= 101;
+                boolean clicEnBase = idCasillaClicada >= 101;
+                if (origenEnBase && clicEnBase) {
+                    seleccionarFicha(boton);
+                    return; // Detenemos el flujo para solo cambiar la selección.
+                }
+
+                // PRIORIDAD 1: Comprobar si se ha hecho clic en una casilla de destino válida (resaltada).
+                // Esto tiene prioridad para permitir la formación de bloqueos.
+                if (boton.getBackground().getAlpha() > 0) { // Un destino válido tiene un fondo no transparente.
+                     ejecutarMovimientoOCaptura(boton);
                 } else {
                     // PRIORIDAD 2: Si no es un destino, comprobar si es otra ficha propia para cambiar la selección.
                     UUID fichaClicadaId = getFichaEnCasilla(Integer.parseInt(boton.getActionCommand()));
                     ColorJugador miColor = mapaColoresJugadores.get(miId);
 
                     if (fichaClicadaId != null && miColor == getColorDeFicha(fichaClicadaId)) {
-                        // Si es la misma ficha, se deselecciona, pero se mantienen los destinos.
+                        // Si es la misma ficha, se deselecciona.
                         if (botonFichaSeleccionada == boton) {
-                            boton.setBorderPainted(false);
-                            botonFichaSeleccionada = null;
-                            fichaActivaEnBloqueo = null; // Limpiar selección de bloqueo
+                            limpiarResaltados();
                         } else {
                             // Si es otra ficha propia, se cambia la selección.
                             seleccionarFicha(boton);
                         }
                     } else {
-                        // Si se hace clic en cualquier otro lugar, se limpia todo.
+                        // Si se hace clic en cualquier otro lugar (casilla vacía no resaltada), se limpia todo.
                         limpiarResaltados();
                     }
                 }
@@ -913,14 +922,25 @@ public class FondoBGTablero extends ImageBackgroundPanel {
      * @param botonFicha El botón a seleccionar.
      */
     private void seleccionarFicha(JButton botonFicha) {
-        // Limpiamos solo los bordes de las fichas, pero no las casillas de destino.
-        for (JButton boton : botonesCasillas.values()) {
-            boton.setBorderPainted(false);
-        }
+        // Limpiamos completamente los resaltados anteriores (selección y destinos).
+        limpiarResaltados();
+
+        // Establecemos la nueva ficha seleccionada.
         botonFichaSeleccionada = botonFicha;
-        botonFichaSeleccionada.setBorder(javax.swing.BorderFactory.createLineBorder(Color.CYAN, 3));
-        botonFichaSeleccionada.setBorderPainted(true);
-        resaltarVictimas(); // Muestra posibles víctimas para la nueva selección.
+        if (botonFichaSeleccionada != null) {
+            botonFichaSeleccionada.setBorder(javax.swing.BorderFactory.createLineBorder(Color.CYAN, 3));
+            botonFichaSeleccionada.setBorderPainted(true);
+
+            // Volvemos a calcular y mostrar los destinos para la nueva ficha.
+            if (controlador != null) {
+                int valorDado = controlador.getValorDado();
+                UUID miId = controlador.getMiId();
+                if (valorDado > 0 && miId != null) {
+                    mostrarCasillasDestino(valorDado, mapaColoresJugadores.get(miId));
+                }
+            }
+            resaltarVictimas(); // Muestra posibles víctimas para la nueva selección.
+        }
     }
     
     /**
@@ -972,15 +992,43 @@ public class FondoBGTablero extends ImageBackgroundPanel {
      * @param path La lista de IDs de casillas a seguir. Si es null, se anima en línea recta.
      */
     private void animarFicha(JButton origen, JButton destino, List<Integer> path, Runnable onAnimationEnd) {
-        final Icon fichaIcon = origen.getIcon();
-        if (fichaIcon == null || fichaIcon instanceof IconoDeHueco || fichaIcon instanceof IconoCompuesto) {
+        Icon fichaIcon = origen.getIcon();
+
+        // Lógica para manejar la animación al salir de un bloqueo.
+        if (fichaIcon instanceof IconoCompuesto) {
+            IconoCompuesto compuesto = (IconoCompuesto) fichaIcon;
+            int idCasillaOrigen = Integer.parseInt(origen.getActionCommand());
+
+            // Identificamos las dos fichas en el bloqueo.
+            List<UUID> fichasEnBloqueo = mapaPosicionFichas.entrySet().stream()
+                .filter(entry -> entry.getValue().equals(idCasillaOrigen))
+                .map(Map.Entry::getKey)
+                .collect(java.util.stream.Collectors.toList());
+
+            // Determinamos cuál se mueve y cuál se queda.
+            UUID fichaQueSeMueveId = fichaActivaEnBloqueo;
+            UUID fichaQueSeQuedaId = fichasEnBloqueo.stream()
+                .filter(id -> !id.equals(fichaQueSeMueveId))
+                .findFirst().orElse(null);
+
+            // Obtenemos el icono de la ficha que se mueve para la animación.
+            fichaIcon = getIconForFicha(getBotonCasaIdDeFicha(fichaQueSeMueveId, getIndiceDeFicha(fichaQueSeMueveId, fichasPorJugadorActuales), getColorDeFicha(fichaQueSeMueveId)));
+
+            // Dejamos el icono de la ficha que se queda en la casilla de origen.
+            if (fichaQueSeQuedaId != null) {
+                origen.setIcon(getIconForFicha(getBotonCasaIdDeFicha(fichaQueSeQuedaId, getIndiceDeFicha(fichaQueSeQuedaId, fichasPorJugadorActuales), getColorDeFicha(fichaQueSeQuedaId))));
+            }
+        }
+
+        if (fichaIcon == null || fichaIcon instanceof IconoDeHueco) {
             if (onAnimationEnd != null) {
                 onAnimationEnd.run(); // Si no hay ficha, ejecutar el callback y salir.
             }
             return;
         }
 
-        final JLabel fichaAnimada = new JLabel(fichaIcon);
+        final Icon finalFichaIcon = fichaIcon; // Variable final para usar en la lambda.
+        final JLabel fichaAnimada = new JLabel(finalFichaIcon);
         fichaAnimada.setBounds(origen.getBounds());
         add(fichaAnimada, 0);
 
@@ -998,7 +1046,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         // Si no hay una ruta definida (o es un movimiento a casa), hacer una animación simple.
         if (path == null || path.isEmpty()) {
             animarMovimientoSimple(fichaAnimada, origen.getLocation(), destino.getLocation(), () -> {
-                finalizarAnimacion(fichaAnimada, destino, fichaIcon, onAnimationEnd);
+                finalizarAnimacion(fichaAnimada, destino, finalFichaIcon, onAnimationEnd);
             });
         } else {
             // Si hay una ruta, animar paso por paso.
