@@ -169,6 +169,42 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         }
     }
 
+    /**
+     * Clase interna que dibuja un color de fondo y luego un icono encima.
+     * Esto permite tener un fondo resaltado solo para el icono, sin hacer
+     * opaco todo el botón.
+     */
+    private class IconoConFondo implements Icon {
+        private final Icon original;
+        private final Color colorFondo;
+
+        public IconoConFondo(Icon original, Color colorFondo) {
+            this.original = original;
+            this.colorFondo = colorFondo;
+        }
+
+        @Override
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            Graphics2D g2d = (Graphics2D) g.create();
+            // Dibuja el color de fondo
+            g2d.setColor(colorFondo);
+            g2d.fillRect(x, y, getIconWidth(), getIconHeight());
+            // Dibuja el icono original encima del fondo
+            original.paintIcon(c, g, x, y);
+            g2d.dispose();
+        }
+
+        @Override
+        public int getIconWidth() {
+            return original.getIconWidth();
+        }
+
+        @Override
+        public int getIconHeight() {
+            return original.getIconHeight();
+        }
+    }
+
     // Mapa para guardar la referencia a cada botón por su número de casilla
     private final Map<Integer, JButton> botonesCasillas = new HashMap<>();
     // Generador de números aleatorios para la simulación
@@ -416,11 +452,25 @@ public class FondoBGTablero extends ImageBackgroundPanel {
     private void resaltarBoton(int idCasillaAMostrar, boolean esActiva) {
         JButton botonAMostrar = botonesCasillas.get(idCasillaAMostrar);
         if (botonAMostrar != null) {
-            botonAMostrar.setVisible(true);
+            botonAMostrar.setVisible(true); // Nos aseguramos de que el botón sea visible
+            Color colorResaltado = esActiva ? new Color(255, 255, 0, 180) : new Color(128, 128, 128, 150);
             botonAMostrar.setEnabled(esActiva); // Solo se puede hacer clic si es la casilla activa
-            botonAMostrar.setOpaque(true);
-            botonAMostrar.setContentAreaFilled(true);
-            botonAMostrar.setBackground(esActiva ? new Color(255, 255, 0, 180) : new Color(128, 128, 128, 150)); // Amarillo si es activa, gris si no
+
+            // Si la casilla ya tiene una ficha, usamos el IconoConFondo para no hacer todo el botón opaco.
+            if (botonAMostrar.getIcon() != null && !(botonAMostrar.getIcon() instanceof IconoDeHueco)) {
+                Icon iconoOriginal = botonAMostrar.getIcon();
+                // Evitamos envolver un icono que ya tiene fondo.
+                if (iconoOriginal instanceof IconoConFondo) {
+                    iconoOriginal = ((IconoConFondo) iconoOriginal).original;
+                }
+                botonAMostrar.setIcon(new IconoConFondo(iconoOriginal, colorResaltado));
+                botonAMostrar.setOpaque(false);
+                botonAMostrar.setContentAreaFilled(false);
+            } else {
+                botonAMostrar.setBackground(colorResaltado);
+                botonAMostrar.setOpaque(true); // Hacemos opaco solo si no hay ficha
+                botonAMostrar.setContentAreaFilled(true);
+            }
             botonAMostrar.setBorder(esActiva ? BorderFactory.createLineBorder(Color.ORANGE, 1) : BorderFactory.createLineBorder(Color.DARK_GRAY, 1));
         }
     }
@@ -436,6 +486,11 @@ public class FondoBGTablero extends ImageBackgroundPanel {
             // Si no tiene ficha, se quedará como un área transparente.
             // Si va a recibir una ficha, necesita estar visible y habilitado.
             botonALimpiar.setEnabled(true); // Lo dejamos habilitado para poder hacer clic en las fichas
+            // Si el icono es uno con fondo, lo restauramos al original.
+            if (botonALimpiar.getIcon() instanceof IconoConFondo) {
+                botonALimpiar.setIcon(((IconoConFondo) botonALimpiar.getIcon()).original);
+            }
+            
             botonALimpiar.setOpaque(false); // Lo volvemos transparente
             botonALimpiar.setContentAreaFilled(false);
             botonALimpiar.setBackground(new Color(0, 0, 0, 0)); // Fondo completamente transparente
@@ -1058,7 +1113,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         final Icon finalFichaIcon = fichaIcon; // Variable final para usar en la lambda.
         final JLabel fichaAnimada = new JLabel(finalFichaIcon);
         fichaAnimada.setBounds(origen.getBounds());
-        add(fichaAnimada, 0);
+        add(fichaAnimada, 1);
 
         // Limpiamos el origen
         int idCasillaOrigen = Integer.parseInt(origen.getActionCommand());
