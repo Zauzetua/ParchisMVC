@@ -348,30 +348,32 @@ public class FondoBGTablero extends ImageBackgroundPanel {
      * @param cantidadDeCasillas La cantidad de casillas a resaltar.
      * @param colorDelJugador El color del jugador en turno para determinar la casilla de inicio.
      */
-    public void mostrarCasillasDestino(int cantidadDeCasillas, ColorJugador colorDelJugador) {
-        // Iterar sobre las fichas del jugador actual para determinar y resaltar sus posibles movimientos.
-        fichasPorJugadorActuales.values().stream()
-            .flatMap(List::stream)
-            .filter(ficha -> getColorDeFicha(ficha.id) == colorDelJugador && esMovible(ficha, cantidadDeCasillas))
-            .forEach(ficha -> {
-                int posActual = ficha.posicion;
-                int entradaPasillo = getCasillaEntradaPasillo(colorDelJugador);
-                int meta = getMeta(colorDelJugador);
-
-                if (posActual == -1) { // Desde la base
-                    resaltarBoton(getCasillaDeSalida(colorDelJugador));
-                } else if (posActual > 0 && posActual <= 68) { // Desde el tablero
-                    if (posActual == entradaPasillo) {
-                        int destino = getPrimerPasoPasillo(colorDelJugador) + cantidadDeCasillas - 1;
-                        resaltarBoton(destino <= meta ? destino : meta - (destino - meta));
-                    } else {
-                        resaltarBoton(((posActual - 1 + cantidadDeCasillas) % 68) + 1);
+    public void mostrarCasillasDestino(int cantidadDeCasillas, ColorJugador colorDelJugador, UUID fichaSeleccionadaId) {
+        // Primero, mostramos todas las casillas de destino posibles en gris y no clickeables.
+        for (List<com.mycompany.parchismvc.Model.Ficha> fichas : fichasPorJugadorActuales.values()) {
+            for (com.mycompany.parchismvc.Model.Ficha ficha : fichas) {
+                if (ficha != null && getColorDeFicha(ficha.id) == colorDelJugador && esMovible(ficha, cantidadDeCasillas)) {
+                    int idDestino = calcularDestino(ficha.posicion, cantidadDeCasillas, colorDelJugador);
+                    if (idDestino != -1) {
+                        resaltarBoton(idDestino, false); // Resaltar en gris, no clickeable.
                     }
-                } else if (posActual > 68) { // Desde el pasillo
-                    int destino = posActual + cantidadDeCasillas;
-                    resaltarBoton(destino <= meta ? destino : meta - (destino - meta));
                 }
-            });
+            }
+        }
+    
+        // Si hay una ficha seleccionada, resaltamos su destino específico en amarillo y la hacemos clickeable.
+        if (fichaSeleccionadaId != null) {
+            fichasPorJugadorActuales.values().stream()
+                .flatMap(List::stream)
+                .filter(f -> f != null && f.id.equals(fichaSeleccionadaId))
+                .findFirst()
+                .ifPresent(ficha -> {
+                    int idDestino = calcularDestino(ficha.posicion, cantidadDeCasillas, colorDelJugador);
+                    if (idDestino != -1) {
+                        resaltarBoton(idDestino, true); // Resaltar en amarillo, clickeable.
+                    }
+                });
+        }
         repaint();
     }
     
@@ -388,18 +390,40 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         return true; // Para fichas en tablero o pasillo, asumimos que se pueden mover.
     }
 
-    private void resaltarBoton(int idCasillaAMostrar) {
-                JButton botonAMostrar = botonesCasillas.get(idCasillaAMostrar);
-                if (botonAMostrar != null) {
-                    System.out.println("Mostrando casilla: " + idCasillaAMostrar);
-                    botonAMostrar.setVisible(true);
-                    botonAMostrar.setEnabled(true);
-                    botonAMostrar.setOpaque(true); 
-                    botonAMostrar.setContentAreaFilled(true); // Necesario para que el fondo se pinte
-                    botonAMostrar.setBackground(new Color(255, 255, 0, 180)); // Amarillo más opaco
-                    botonAMostrar.setBorder(javax.swing.BorderFactory.createLineBorder(Color.ORANGE, 1));
-                }
+    private int calcularDestino(int posActual, int cantidadDeCasillas, ColorJugador colorDelJugador) {
+        int entradaPasillo = getCasillaEntradaPasillo(colorDelJugador);
+        int meta = getMeta(colorDelJugador);
+    
+        if (posActual == -1) { // Desde la base
+            return getCasillaDeSalida(colorDelJugador);
+        } else if (posActual > 0 && posActual <= 68) { // Desde el tablero
+            if (posActual > entradaPasillo && posActual + cantidadDeCasillas <= entradaPasillo + 68) { // Caso de vuelta completa
+                return ((posActual - 1 + cantidadDeCasillas) % 68) + 1;
+            } else if (posActual <= entradaPasillo && posActual + cantidadDeCasillas > entradaPasillo) { // Entra al pasillo
+                int pasosRestantes = cantidadDeCasillas - (entradaPasillo - posActual);
+                int destino = getPrimerPasoPasillo(colorDelJugador) + pasosRestantes - 1;
+                return destino <= meta ? destino : meta - (destino - meta);
+            } else { // Movimiento normal en el tablero
+                return ((posActual - 1 + cantidadDeCasillas) % 68) + 1;
             }
+        } else if (posActual > 68) { // Desde el pasillo
+            int destino = posActual + cantidadDeCasillas;
+            return destino <= meta ? destino : meta - (destino - meta);
+        }
+        return -1; // No se pudo calcular el destino
+    }
+
+    private void resaltarBoton(int idCasillaAMostrar, boolean esActiva) {
+        JButton botonAMostrar = botonesCasillas.get(idCasillaAMostrar);
+        if (botonAMostrar != null) {
+            botonAMostrar.setVisible(true);
+            botonAMostrar.setEnabled(esActiva); // Solo se puede hacer clic si es la casilla activa
+            botonAMostrar.setOpaque(true);
+            botonAMostrar.setContentAreaFilled(true);
+            botonAMostrar.setBackground(esActiva ? new Color(255, 255, 0, 180) : new Color(128, 128, 128, 150)); // Amarillo si es activa, gris si no
+            botonAMostrar.setBorder(esActiva ? BorderFactory.createLineBorder(Color.ORANGE, 1) : BorderFactory.createLineBorder(Color.DARK_GRAY, 1));
+        }
+    }
     
     /**
      * Restaura una casilla a su estado visual por defecto (transparente y sin borde).
@@ -931,13 +955,17 @@ public class FondoBGTablero extends ImageBackgroundPanel {
             botonFichaSeleccionada.setBorder(javax.swing.BorderFactory.createLineBorder(Color.CYAN, 3));
             botonFichaSeleccionada.setBorderPainted(true);
 
-            // Volvemos a calcular y mostrar los destinos para la nueva ficha.
+            // Volvemos a calcular y mostrar los destinos, indicando cuál es la ficha seleccionada.
             if (controlador != null) {
                 int valorDado = controlador.getValorDado();
                 UUID miId = controlador.getMiId();
                 if (valorDado > 0 && miId != null) {
-                    mostrarCasillasDestino(valorDado, mapaColoresJugadores.get(miId));
+                    int idCasilla = Integer.parseInt(botonFichaSeleccionada.getActionCommand());
+                    UUID fichaId = getFichaEnCasilla(idCasilla);
+                    mostrarCasillasDestino(valorDado, mapaColoresJugadores.get(miId), fichaId);
                 }
+            } else {
+                limpiarCasillasDeTablero();
             }
             resaltarVictimas(); // Muestra posibles víctimas para la nueva selección.
         }
@@ -1211,12 +1239,14 @@ public class FondoBGTablero extends ImageBackgroundPanel {
     public void resaltarFichasMovibles(int valorDado, ColorJugador colorDelTurno) {
         limpiarResaltados();
         fichasPorJugadorActuales.values().stream()
-            .flatMap(List::stream)
-            .filter(ficha -> getColorDeFicha(ficha.id) == colorDelTurno)
-            .filter(ficha -> {
+                .flatMap(List::stream)
+                .filter(ficha -> ficha != null && getColorDeFicha(ficha.id) == colorDelTurno)
+                .filter(ficha -> {
                 // Filtramos las fichas que ya han llegado a la meta.
-                if (ficha.posicion == getMeta(colorDelTurno)) {
-                    return false;
+                if (colorDelTurno != null) {
+                    if (ficha.posicion == getMeta(colorDelTurno)) {
+                        return false;
+                    }
                 }
                 return true;
             })
@@ -1244,6 +1274,10 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                     }
                 }
             });
+        // Mostramos los destinos en gris
+        if (controlador != null && valorDado > 0) {
+            mostrarCasillasDestino(valorDado, colorDelTurno, null);
+        }
         repaint();
     }
 
