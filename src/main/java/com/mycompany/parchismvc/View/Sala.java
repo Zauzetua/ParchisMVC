@@ -153,11 +153,114 @@ public class Sala extends JFrame implements GameEvents {
 
     // === Inner components ===
     private static class PlayerSlotPanel extends JPanel {
-        private JLabel lblNombre = new JLabel("JUGADOR"); private JLabel lblAvatar = new JLabel(); private JLabel lblEstadoJugador = new JLabel("No Listo"); private JLabel lblTurno = new JLabel();
+        private JLabel lblNombre = new JLabel("JUGADOR");
+        private JLabel lblAvatar = new JLabel();
+        private JLabel lblFicha = new JLabel();
+        private JLabel lblEstadoJugador = new JLabel("No Listo");
+        private JLabel lblTurno = new JLabel();
         
-        PlayerSlotPanel(){ setOpaque(false); setLayout(new BoxLayout(this, BoxLayout.Y_AXIS)); lblNombre.setForeground(Color.WHITE); lblNombre.setFont(new Font("Arial", Font.BOLD, 16)); lblEstadoJugador.setForeground(Color.RED); lblTurno.setForeground(Color.YELLOW); lblAvatar.setPreferredSize(new Dimension(64,64)); lblAvatar.setOpaque(true); lblAvatar.setBackground(Color.WHITE); lblAvatar.setBorder(BorderFactory.createLineBorder(Color.DARK_GRAY,2)); add(lblNombre); add(Box.createVerticalStrut(5)); add(lblAvatar); add(Box.createVerticalStrut(5)); add(lblEstadoJugador); add(lblTurno); }
-        void update(Jugador j, boolean esYo, boolean esTurno){ lblNombre.setText(j.nombre); lblEstadoJugador.setText(j.listo?"Listo":"No Listo"); lblEstadoJugador.setForeground(j.listo?new Color(120,255,120):Color.RED); lblTurno.setText(esTurno?"Turno":""); if(j.avatar!=null){ try { var imgUrl = PlayerSlotPanel.class.getResource(j.avatar); if(imgUrl!=null){ var icon = new ImageIcon(new ImageIcon(imgUrl).getImage().getScaledInstance(64,64,Image.SCALE_SMOOTH)); lblAvatar.setIcon(icon); } } catch(Exception ignored) {} } lblAvatar.setBorder(BorderFactory.createLineBorder(esYo?Color.GREEN:Color.DARK_GRAY, esYo?3:2)); }
-        void clear(){ lblNombre.setText("Libre"); lblEstadoJugador.setText(""); lblTurno.setText(""); lblAvatar.setIcon(null); lblAvatar.setBackground(Color.WHITE); lblAvatar.setBorder(BorderFactory.createLineBorder(Color.GRAY,1)); }
+        PlayerSlotPanel() {
+            setOpaque(false);
+            setLayout(new FlowLayout(FlowLayout.LEFT, 15, 10));
+            
+            // Panel izquierdo: avatar
+            JPanel leftPanel = new JPanel();
+            leftPanel.setOpaque(false);
+            leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
+            lblAvatar.setPreferredSize(new Dimension(80, 80));
+            lblAvatar.setOpaque(false);
+            lblAvatar.setBorder(BorderFactory.createLineBorder(Color.DARK_GRAY, 2));
+            lblAvatar.setHorizontalAlignment(SwingConstants.CENTER);
+            leftPanel.add(lblAvatar);
+            
+            // Panel central: ficha de color
+            JPanel centerPanel = new JPanel();
+            centerPanel.setOpaque(false);
+            centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
+            lblFicha.setPreferredSize(new Dimension(80, 80));
+            lblFicha.setOpaque(false);
+            lblFicha.setHorizontalAlignment(SwingConstants.CENTER);
+            centerPanel.add(lblFicha);
+            
+            // Panel derecho: info del jugador
+            JPanel rightPanel = new JPanel();
+            rightPanel.setOpaque(false);
+            rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
+            
+            lblNombre.setForeground(Color.WHITE);
+            lblNombre.setFont(new Font("Arial", Font.BOLD, 18));
+            lblNombre.setAlignmentX(Component.LEFT_ALIGNMENT);
+            
+            lblEstadoJugador.setFont(new Font("Arial", Font.BOLD, 20));
+            lblEstadoJugador.setForeground(Color.RED);
+            lblEstadoJugador.setAlignmentX(Component.LEFT_ALIGNMENT);
+            
+            lblTurno.setForeground(Color.YELLOW);
+            lblTurno.setFont(new Font("Arial", Font.BOLD, 14));
+            lblTurno.setAlignmentX(Component.LEFT_ALIGNMENT);
+            
+            rightPanel.add(lblNombre);
+            rightPanel.add(Box.createVerticalStrut(8));
+            rightPanel.add(lblEstadoJugador);
+            rightPanel.add(Box.createVerticalStrut(5));
+            rightPanel.add(lblTurno);
+            
+            add(leftPanel);
+            add(centerPanel);
+            add(rightPanel);
+        }
+        
+        void update(Jugador j, boolean esYo, boolean esTurno) {
+            lblNombre.setText(j.nombre);
+            lblEstadoJugador.setText(j.listo ? "LISTO" : "NO LISTO");
+            lblEstadoJugador.setForeground(j.listo ? new Color(0, 255, 100) : new Color(255, 80, 80));
+            lblTurno.setText(esTurno ? "★ TURNO ★" : "");
+            
+            // Cargar avatar
+            if (j.avatar != null) {
+                try {
+                    var imgUrl = PlayerSlotPanel.class.getResource(j.avatar);
+                    if (imgUrl != null) {
+                        var icon = new ImageIcon(new ImageIcon(imgUrl).getImage().getScaledInstance(80, 80, Image.SCALE_SMOOTH));
+                        lblAvatar.setIcon(icon);
+                    }
+                } catch (Exception ignored) {}
+            }
+            
+            // Cargar ficha según color o gris por defecto
+            String fichaPath = getFichaPath(j.color);
+            try {
+                var fichaUrl = PlayerSlotPanel.class.getResource(fichaPath);
+                if (fichaUrl != null) {
+                    var fichaIcon = new ImageIcon(new ImageIcon(fichaUrl).getImage().getScaledInstance(80, 80, Image.SCALE_SMOOTH));
+                    lblFicha.setIcon(fichaIcon);
+                }
+            } catch (Exception ignored) {}
+            
+            // Borde especial si es el jugador local
+            lblAvatar.setBorder(BorderFactory.createLineBorder(esYo ? new Color(0, 255, 100) : Color.DARK_GRAY, esYo ? 4 : 2));
+        }
+        
+        private String getFichaPath(ColorJugador color) {
+            if (color == null) {
+                return "/Assets/NFicha_Gris.png";
+            }
+            return switch (color) {
+                case ROJO -> "/Assets/NFicha_Roja.png";
+                case AZUL -> "/Assets/NFicha_Azul.png";
+                case VERDE -> "/Assets/NFicha_Verde.png";
+                case AMARILLO -> "/Assets/NFicha_ Amarilla.png";
+            };
+        }
+        
+        void clear() {
+            lblNombre.setText("Libre");
+            lblEstadoJugador.setText("");
+            lblTurno.setText("");
+            lblAvatar.setIcon(null);
+            lblFicha.setIcon(null);
+            lblAvatar.setBorder(BorderFactory.createLineBorder(Color.GRAY, 1));
+        }
     }
     private static class ColorButton extends JButton { private final ColorJugador colorJugador; private boolean taken; ColorButton(ColorJugador c){ super(c.name()); this.colorJugador=c; setPreferredSize(new Dimension(100,70)); setFocusPainted(false); setBackground(swingColor(c)); setForeground(Color.BLACK); }
         static Color swingColor(ColorJugador c){ return switch(c){ case ROJO -> Color.RED; case AZUL -> new Color(40,90,180); case VERDE -> new Color(40,170,120); case AMARILLO -> Color.YELLOW; }; }
