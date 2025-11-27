@@ -70,7 +70,7 @@ public class RegistroJF extends javax.swing.JFrame {
                 controlador.conectarRed("127.0.0.1",5000,"sala1");
                 conectado = true;
             }
-            controlador.registrarAsync(nombre, avatarSeleccionado==null?"ratita":avatarSeleccionado);
+            controlador.registrarAsync(nombre, avatarSeleccionado==null?"/Assets/image_1.png":avatarSeleccionado);
         });
     }
 

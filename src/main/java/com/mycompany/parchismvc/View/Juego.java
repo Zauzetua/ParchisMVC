@@ -6,7 +6,6 @@ package com.mycompany.parchismvc.View;
 
 import com.mycompany.parchismvc.Controller.Controlador;
 import com.mycompany.parchismvc.Model.ColorJugador;
-import com.mycompany.parchismvc.Model.Ficha;
 import com.mycompany.parchismvc.Model.Jugador;
 import com.mycompany.parchismvc.Model.Sala;
 import java.util.HashMap;
@@ -47,6 +46,25 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
             this.controlador.setEvents(this);
             ((com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero) JPTablero).setControlador(this.controlador);
         }
+    }
+    
+    /**
+     * Genera el texto HTML con avatar e icono para mostrar en las etiquetas de jugador
+     */
+    private String obtenerTextoConAvatar(Jugador jugador) {
+        if (jugador.avatar != null && !jugador.avatar.isEmpty()) {
+            // Intenta cargar la imagen del avatar
+            try {
+                var imgUrl = getClass().getResource(jugador.avatar);
+                if (imgUrl != null) {
+                    // Retorna HTML con imagen pequeña junto al nombre
+                    return "<html><img src='" + imgUrl + "' width='16' height='16'/> " + jugador.nombre + "</html>";
+                }
+            } catch (Exception ignored) {
+                // Si falla, solo retorna el nombre
+            }
+        }
+        return jugador.nombre;
     }
     
     private void wireEvents() {
@@ -218,15 +236,16 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
         
         lblNickName.setText(""); // Limpiar el nombre del turno anterior
         
-        // Asignar nombres a las etiquetas de color correspondientes
+        // Asignar nombres y avatares a las etiquetas de color correspondientes
         for (Jugador jugador : jugadores) {
-            // Poner el nombre en la base de su color
+            // Poner el nombre y avatar en la base de su color
             if (jugador.color != null) {
+                String textoConAvatar = obtenerTextoConAvatar(jugador);
                 switch (jugador.color) {
-                    case ROJO -> lblJugadorRojo.setText(jugador.nombre);
-                    case AZUL -> lblJugadorAzul.setText(jugador.nombre);
-                    case VERDE -> lblJugadorVerde.setText(jugador.nombre);
-                    case AMARILLO -> lblJugadorAmarillo.setText(jugador.nombre);
+                    case ROJO -> lblJugadorRojo.setText(textoConAvatar);
+                    case AZUL -> lblJugadorAzul.setText(textoConAvatar);
+                    case VERDE -> lblJugadorVerde.setText(textoConAvatar);
+                    case AMARILLO -> lblJugadorAmarillo.setText(textoConAvatar);
                 }
                 
                 // Guardamos el color del jugador para usarlo después

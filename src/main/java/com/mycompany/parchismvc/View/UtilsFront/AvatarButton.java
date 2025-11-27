@@ -9,10 +9,12 @@ import java.awt.*;
 
 public class AvatarButton extends JToggleButton {
     private final String avatarId;
+    private final String resourcePath;
 
     public AvatarButton(String avatarId, String resourcePath, int sizePx) {
         this.avatarId = avatarId;
-        setActionCommand(avatarId);
+        this.resourcePath = resourcePath;
+        setActionCommand(resourcePath); // Guardamos la ruta, no el ID
         setFocusPainted(false);
         setBorderPainted(false);
         setContentAreaFilled(false);
@@ -39,6 +41,10 @@ public class AvatarButton extends JToggleButton {
 
     public String getAvatarId() {
         return avatarId;
+    }
+    
+    public String getResourcePath() {
+        return resourcePath;
     }
 
     @Override
