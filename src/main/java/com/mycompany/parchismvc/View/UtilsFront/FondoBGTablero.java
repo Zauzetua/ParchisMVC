@@ -385,16 +385,24 @@ public class FondoBGTablero extends ImageBackgroundPanel {
      * @param colorDelJugador El color del jugador en turno para determinar la casilla de inicio.
      */
     public void mostrarCasillasDestino(int cantidadDeCasillas, ColorJugador colorDelJugador, UUID fichaSeleccionadaId) {
-        // Primero, mostramos todas las casillas de destino posibles en gris y no clickeables.
-        for (List<com.mycompany.parchismvc.Model.Ficha> fichas : fichasPorJugadorActuales.values()) {
-            for (com.mycompany.parchismvc.Model.Ficha ficha : fichas) {
-                if (ficha != null && getColorDeFicha(ficha.id) == colorDelJugador && esMovible(ficha, cantidadDeCasillas)) {
+        // Si no hay una ficha seleccionada, mostramos todos los destinos posibles en gris.
+        if (fichaSeleccionadaId == null) {
+            fichasPorJugadorActuales.values().stream()
+                .flatMap(List::stream)
+                .filter(ficha -> ficha != null && getColorDeFicha(ficha.id) == colorDelJugador && esMovible(ficha, cantidadDeCasillas))
+                .forEach(ficha -> {
                     int idDestino = calcularDestino(ficha.posicion, cantidadDeCasillas, colorDelJugador);
-                    if (idDestino != -1) {
-                        resaltarBoton(idDestino, false); // Resaltar en gris, no clickeable.
-                    }
-                }
-            }
+                    if (idDestino == -1) return;
+    
+                    // CASO ESPECIAL: Si una ficha de casa puede salir a una casilla de salida
+                    // que ya está ocupada por una ficha propia, la resaltamos como activa (amarilla)
+                    // para permitir que el menú de bloqueo aparezca.
+                    boolean esSalidaDeCasa = ficha.posicion == -1;
+                    long fichasEnDestino = mapaPosicionFichas.values().stream().filter(p -> p.equals(idDestino)).count();
+                    boolean esParaMenuBloqueo = esSalidaDeCasa && fichasEnDestino == 1 && cantidadDeCasillas == 5;
+    
+                    resaltarBoton(idDestino, esParaMenuBloqueo); // Amarillo si es para menú, si no, gris.
+                });
         }
     
         // Si hay una ficha seleccionada, resaltamos su destino específico en amarillo y la hacemos clickeable.
@@ -847,12 +855,36 @@ public class FondoBGTablero extends ImageBackgroundPanel {
 
                 // PRIORIDAD 1: Comprobar si se ha hecho clic en una casilla de destino válida (resaltada).
                 UUID fichaClicadaId = getFichaEnCasilla(Integer.parseInt(boton.getActionCommand()));
-                if (esDestinoValido(boton, fichaClicadaId)) {
-                    ejecutarMovimientoOCaptura(boton);
-                } else { // PRIORIDAD 2: Si no es un destino, comprobar si es otra ficha propia para cambiar la selección.
-                    ColorJugador miColor = mapaColoresJugadores.get(miId);
+                
+                // CASO ESPECIAL: Detectar si el clic es para iniciar un menú de bloqueo.
+                boolean esSalidaDeCasa = idCasillaOrigen >= 101;
+                int valorDado = controlador.getValorDado();
+                ColorJugador miColor = mapaColoresJugadores.get(miId);
+                int idDestino = calcularDestino(idCasillaOrigen, valorDado, miColor);
+                boolean esParaMenuBloqueo = esSalidaDeCasa && valorDado == 5 && idCasillaClicada == idDestino && getFichaEnCasilla(idCasillaClicada) != null;
 
-                    if (fichaClicadaId != null && miColor == getColorDeFicha(fichaClicadaId)) {
+                if (esParaMenuBloqueo) {
+                    long fichasEnDestino = mapaPosicionFichas.values().stream().filter(pos -> pos.equals(idCasillaClicada)).count();
+                    if (fichasEnDestino == 1) {
+                        Runnable accionBloqueo = () -> ejecutarMovimientoOCaptura(boton);
+                        mostrarMenuBloqueo(boton, accionBloqueo);
+                        return; // Detenemos para esperar la decisión del menú.
+                    }
+                }
+                else if (esDestinoValido(boton, fichaClicadaId)) {
+                    ejecutarMovimientoOCaptura(boton);
+                } else { 
+                    // PRIORIDAD 2: Si no es un destino, comprobar si es otra ficha propia para cambiar la selección.
+                    if (fichaClicadaId != null && miColor.equals(getColorDeFicha(fichaClicadaId))) {
+                        
+                        // CASO ESPECIAL: Se seleccionó una ficha de base y luego una del tablero.
+                        boolean clicEnTablero = idCasillaClicada < 101;
+                        if (origenEnBase && clicEnTablero) {
+                            Runnable accionMovimiento = () -> ejecutarMovimientoOCaptura(botonesCasillas.get(idDestino));
+                            mostrarMenuBloqueo(boton, accionMovimiento);
+                            return; // Esperamos la decisión del menú.
+                        }
+
                         // Si es la misma ficha, se deselecciona.
                         if (botonFichaSeleccionada == boton) {
                             limpiarResaltados();
@@ -955,40 +987,47 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 boolean esSalidaDeCasa = idCasillaOrigen >= 101;
                 boolean esCasillaDeSalidaPropia = idCasillaDestino == getCasillaDeSalida(colorFichaMovida);
 
-                if (esSalidaDeCasa && esCasillaDeSalidaPropia) { // Si es el caso especial de salir de casa...
-                    // Contamos cuántas fichas hay ya en la casilla de destino.
+                if (esSalidaDeCasa && esCasillaDeSalidaPropia) {
                     long fichasEnDestino = mapaPosicionFichas.values().stream()
                             .filter(pos -> pos.equals(idCasillaDestino))
                             .count();
 
-                    // El menú solo aparece si hay exactamente UNA ficha en el destino.
                     if (fichasEnDestino == 1) {
-                        // Mostramos un menú para que el jugador elija.
-                        JPopupMenu menuOpciones = new JPopupMenu();
-                        
-                        JMenuItem opcionBloqueo = new JMenuItem("Hacer bloqueo");
-                        opcionBloqueo.addActionListener(e -> {
-                            moverFichaPrincipal.run(); // Ejecuta el movimiento para formar el bloqueo.
-                        });
-                        menuOpciones.add(opcionBloqueo);
-
-                        JMenuItem opcionSeleccionar = new JMenuItem("Seleccionar ficha");
-                        opcionSeleccionar.addActionListener(e -> {
-                            limpiarResaltados();
-                            seleccionarFicha(destinoBotonFinal);
-                        });
-                        menuOpciones.add(opcionSeleccionar);
-
-                        menuOpciones.show(destinoBotonFinal, destinoBotonFinal.getWidth() / 2, destinoBotonFinal.getHeight() / 2);
-                    } // Si hay 0 o 2+ fichas, no hacemos nada, el movimiento no es válido o no aplica el menú.
-                } else {
-                    // Si es un bloqueo en cualquier otra casilla, se forma automáticamente.
-                    moverFichaPrincipal.run();
+                        mostrarMenuBloqueo(destinoBotonFinal, moverFichaPrincipal);
+                        return; // Detenemos la ejecución para esperar la decisión del menú.
+                    }
                 }
+                moverFichaPrincipal.run(); // Si no es el caso especial, el bloqueo se forma automáticamente.
             }
         } else { // Si no hay ficha en el destino (es un movimiento a casilla vacía)
             moverFichaPrincipal.run();
         }
+    }
+    
+    /**
+     * Busca el índice de una ficha a partir de su UUID.
+     * Este método es un placeholder y asume que el servidor enviará el índice.
+     * Una implementación más robusta podría buscarlo en una estructura de datos local.
+     * @param idFicha El UUID de la ficha.
+     * @return El índice de la ficha (0-3), o -1 si no se encuentra.
+     */
+    private void mostrarMenuBloqueo(JButton destinoBoton, Runnable accionBloqueo) {
+        JPopupMenu menuOpciones = new JPopupMenu();
+    
+        JMenuItem opcionBloqueo = new JMenuItem("Hacer bloqueo");
+        opcionBloqueo.addActionListener(e -> {
+            accionBloqueo.run(); // Ejecuta el movimiento para formar el bloqueo.
+        });
+        menuOpciones.add(opcionBloqueo);
+    
+        JMenuItem opcionSeleccionar = new JMenuItem("Seleccionar ficha");
+        opcionSeleccionar.addActionListener(e -> {
+            limpiarResaltados();
+            seleccionarFicha(destinoBoton);
+        });
+        menuOpciones.add(opcionSeleccionar);
+    
+        menuOpciones.show(destinoBoton, destinoBoton.getWidth() / 2, destinoBoton.getHeight() / 2);
     }
     
     /**
@@ -1032,7 +1071,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                     int idCasilla = Integer.parseInt(botonFichaSeleccionada.getActionCommand());
                     UUID fichaId = getFichaEnCasilla(idCasilla);
                     mostrarCasillasDestino(valorDado, mapaColoresJugadores.get(miId), fichaId);
-                    
+
                     // VOLVEMOS a resaltar la víctima potencial para ESTA ficha seleccionada.
                     ColorJugador miColor = mapaColoresJugadores.get(miId);
                     int idDestino = calcularDestino(idCasilla, valorDado, miColor);
