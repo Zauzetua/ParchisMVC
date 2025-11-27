@@ -853,6 +853,13 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                     return; // Detenemos el flujo para solo cambiar la selección.
                 }
 
+                // CASO ESPECIAL: Si el origen está en el tablero y se hace clic en cualquier lugar de la base (ficha o hueco).
+                if (!origenEnBase && clicEnBase) {
+                    // Simplemente deseleccionamos la ficha actual.
+                    limpiarResaltados();
+                    return;
+                }
+
                 // PRIORIDAD 1: Comprobar si se ha hecho clic en una casilla de destino válida (resaltada).
                 UUID fichaClicadaId = getFichaEnCasilla(Integer.parseInt(boton.getActionCommand()));
                 
@@ -876,7 +883,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 } else { 
                     // PRIORIDAD 2: Si no es un destino, comprobar si es otra ficha propia para cambiar la selección.
                     if (fichaClicadaId != null && miColor.equals(getColorDeFicha(fichaClicadaId))) {
-                        
+
                         // CASO ESPECIAL: Se seleccionó una ficha de base y luego una del tablero.
                         boolean clicEnTablero = idCasillaClicada < 101;
                         if (origenEnBase && clicEnTablero) {
