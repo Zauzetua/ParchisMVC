@@ -819,6 +819,23 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                     ColorJugador colorFicha = getColorDeFicha(fichaId);
                     ColorJugador miColor = mapaColoresJugadores.get(miId);
                     if (fichaId != null && colorFicha == miColor) {
+                        
+                        // CASO ESPECIAL: Si se selecciona una ficha de base, pero la salida está bloqueada.
+                        int idCasillaClicada = Integer.parseInt(boton.getActionCommand());
+                        boolean esFichaDeBase = idCasillaClicada >= 101;
+                        int valorDado = controlador.getValorDado();
+
+                        if (esFichaDeBase && valorDado == 5) {
+                            int idCasillaSalida = getCasillaDeSalida(miColor);
+                            long fichasEnSalida = mapaPosicionFichas.values().stream().filter(pos -> pos.equals(idCasillaSalida)).count();
+                            
+                            // Si la salida está bloqueada, reasignamos la selección al bloqueo.
+                            if (fichasEnSalida >= 2) {
+                                seleccionarFicha(botonesCasillas.get(idCasillaSalida));
+                                return; // Detenemos para no seleccionar la ficha de base.
+                            }
+                        }
+
                         seleccionarFicha(boton);
                     }
                 }
@@ -1370,6 +1387,18 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 boolean puedeMover = false;
                 if (ficha.posicion == -1) { // En base
                     if (valorDado == 5) puedeMover = true;
+                    if (valorDado == 5) {
+                        // REGLA: No se puede sacar ficha si la casilla de salida ya tiene un bloqueo.
+                        int idCasillaSalida = getCasillaDeSalida(colorDelTurno);
+                        long fichasEnSalida = mapaPosicionFichas.values().stream()
+                                .filter(pos -> pos.equals(idCasillaSalida))
+                                .count();
+                        
+                        // Solo se puede mover si hay menos de 2 fichas en la salida.
+                        if (fichasEnSalida < 2) {
+                            puedeMover = true;
+                        }
+                    }
                 } else { // En tablero o pasillo
                     puedeMover = true; // Asumimos que siempre puede moverse, la lógica de bloqueo está en el servidor.
                 }
