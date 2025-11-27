@@ -456,16 +456,8 @@ public class FondoBGTablero extends ImageBackgroundPanel {
             Color colorResaltado = esActiva ? new Color(255, 255, 0, 180) : new Color(128, 128, 128, 150);
             botonAMostrar.setEnabled(esActiva); // Solo se puede hacer clic si es la casilla activa
 
-            // Si la casilla ya tiene una ficha, usamos el IconoConFondo para no hacer todo el botón opaco.
+            // Si la casilla está vacía, le ponemos el fondo de color. Si tiene ficha, no hacemos nada (ya se encargará resaltarVictimas de ponerle el borde rojo si aplica).
             if (botonAMostrar.getIcon() != null && !(botonAMostrar.getIcon() instanceof IconoDeHueco)) {
-                Icon iconoOriginal = botonAMostrar.getIcon();
-                // Evitamos envolver un icono que ya tiene fondo.
-                if (iconoOriginal instanceof IconoConFondo) {
-                    iconoOriginal = ((IconoConFondo) iconoOriginal).original;
-                }
-                botonAMostrar.setIcon(new IconoConFondo(iconoOriginal, colorResaltado));
-                botonAMostrar.setOpaque(false);
-                botonAMostrar.setContentAreaFilled(false);
             } else {
                 botonAMostrar.setBackground(colorResaltado);
                 botonAMostrar.setOpaque(true); // Hacemos opaco solo si no hay ficha
