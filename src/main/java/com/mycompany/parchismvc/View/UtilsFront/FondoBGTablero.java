@@ -854,12 +854,10 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 }
 
                 // PRIORIDAD 1: Comprobar si se ha hecho clic en una casilla de destino válida (resaltada).
-                // Esto tiene prioridad para permitir la formación de bloqueos.
-                if (boton.isEnabled() && boton.getBackground().getAlpha() > 0) { // Un destino válido está habilitado y tiene un fondo no transparente.
-                     ejecutarMovimientoOCaptura(boton);
-                } else {
-                    // PRIORIDAD 2: Si no es un destino, comprobar si es otra ficha propia para cambiar la selección.
-                    UUID fichaClicadaId = getFichaEnCasilla(Integer.parseInt(boton.getActionCommand()));
+                UUID fichaClicadaId = getFichaEnCasilla(Integer.parseInt(boton.getActionCommand()));
+                if (esDestinoValido(boton, fichaClicadaId)) {
+                    ejecutarMovimientoOCaptura(boton);
+                } else { // PRIORIDAD 2: Si no es un destino, comprobar si es otra ficha propia para cambiar la selección.
                     ColorJugador miColor = mapaColoresJugadores.get(miId);
 
                     if (fichaClicadaId != null && miColor == getColorDeFicha(fichaClicadaId)) {
@@ -879,6 +877,25 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         };
     }
 
+    /**
+     * Comprueba si un botón es un destino válido para el movimiento.
+     * Un destino es válido si está resaltado (amarillo para movimiento, rojo para captura).
+     */
+    private boolean esDestinoValido(JButton boton, UUID fichaEnBoton) {
+        // Opción 1: Es una casilla de destino amarilla (movimiento normal).
+        boolean esDestinoAmarillo = boton.isEnabled() && boton.getBackground().getAlpha() > 0;
+        if (esDestinoAmarillo) return true;
+
+        // Opción 2: Es una casilla con una ficha víctima (borde rojo).
+        if (boton.isBorderPainted() && boton.getBorder() instanceof javax.swing.border.LineBorder) {
+            javax.swing.border.LineBorder border = (javax.swing.border.LineBorder) boton.getBorder();
+            if (border.getLineColor().equals(Color.RED)) {
+                return true; // Es un destino de captura válido.
+            }
+        }
+
+        return false;
+    }
     private com.mycompany.parchismvc.Controller.Controlador controlador;
     private UUID miId;
 
@@ -921,7 +938,12 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         if (idFichaEnDestino != null) {
             ColorJugador colorFichaEnDestino = getColorDeFicha(idFichaEnDestino);
             // Si la ficha en el destino es de un color diferente (es una captura)
-            if (colorFichaMovida != colorFichaEnDestino) {
+            java.util.Set<Integer> casillasSeguras = java.util.Set.of(5, 12, 17, 22, 29, 34, 39, 46, 51, 56, 63, 68);
+            boolean esCasillaDeTableroNormal = idCasillaDestino > 0 && idCasillaDestino <= 68;
+            boolean esCapturable = colorFichaMovida != colorFichaEnDestino && esCasillaDeTableroNormal && !casillasSeguras.contains(idCasillaDestino);
+
+            // Si la ficha en el destino es de un color diferente y no está en una casilla segura (es una captura)
+            if (esCapturable) {
                 System.out.println("¡COMER! Ficha " + idFichaMovida + " come a " + idFichaEnDestino);
                 JButton victimaBoton = botonesCasillas.get(idCasillaDestino);
                 if (victimaBoton == null) { return; } // Seguridad
@@ -1018,11 +1040,22 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                     int idCasilla = Integer.parseInt(botonFichaSeleccionada.getActionCommand());
                     UUID fichaId = getFichaEnCasilla(idCasilla);
                     mostrarCasillasDestino(valorDado, mapaColoresJugadores.get(miId), fichaId);
+                    
+                    // VOLVEMOS a resaltar la víctima potencial para ESTA ficha seleccionada.
+                    ColorJugador miColor = mapaColoresJugadores.get(miId);
+                    int idDestino = calcularDestino(idCasilla, valorDado, miColor);
+                    if (idDestino != -1) {
+                        UUID idVictima = getFichaEnCasilla(idDestino);
+                        java.util.Set<Integer> casillasSeguras = java.util.Set.of(5, 12, 17, 22, 29, 34, 39, 46, 51, 56, 63, 68);
+                        if (idVictima != null && getColorDeFicha(idVictima) != miColor && !casillasSeguras.contains(idDestino)) {
+                            botonesCasillas.get(idDestino).setBorder(javax.swing.BorderFactory.createLineBorder(Color.RED, 3));
+                            botonesCasillas.get(idDestino).setBorderPainted(true);
+                        }
+                    }
                 }
             } else {
                 limpiarCasillasDeTablero();
             }
-            resaltarVictimas(); // Muestra posibles víctimas para la nueva selección.
         }
     }
     
@@ -1230,35 +1263,25 @@ public class FondoBGTablero extends ImageBackgroundPanel {
      * Itera sobre las casillas de destino visibles y resalta las fichas
      * enemigas que encuentre.
      */
-    private void resaltarVictimas() {
-        if (botonFichaSeleccionada == null) {
-            return;
-        }
-        UUID idFichaAtacante = getFichaEnCasilla(Integer.parseInt(botonFichaSeleccionada.getActionCommand()));
-        if (idFichaAtacante == null) {
-            return;
-        }
+    private void resaltarVictimas(int valorDado, ColorJugador colorDelTurno) {
+        if (controlador == null) return;
 
-        // REGLA: No se pueden resaltar víctimas si la ficha atacante está en su casa.
-        int idCasillaAtacante = mapaPosicionFichas.get(idFichaAtacante);
-        if (idCasillaAtacante >= 101) {
-            return; // Salimos del método, no hay nada que resaltar.
-        }
+        fichasPorJugadorActuales.values().stream()
+            .flatMap(List::stream)
+            .filter(ficha -> ficha != null && getColorDeFicha(ficha.id) == colorDelTurno)
+            .forEach(ficha -> {
+                int idDestino = calcularDestino(ficha.posicion, valorDado, colorDelTurno);
+                if (idDestino != -1) {
+                    UUID idVictima = getFichaEnCasilla(idDestino);
+                    java.util.Set<Integer> casillasSeguras = java.util.Set.of(5, 12, 17, 22, 29, 34, 39, 46, 51, 56, 63, 68);
 
-        for (Map.Entry<Integer, JButton> entry : botonesCasillas.entrySet()) {
-            JButton botonCasilla = entry.getValue();
-            // Si la casilla es visible y está habilitada (es un destino válido)
-            if (botonCasilla.isVisible() && botonCasilla.isEnabled()) {
-                UUID idVictima = getFichaEnCasilla(entry.getKey());
-                // Si hay una ficha en esa casilla, es de otro color Y la víctima está en el tablero...
-                if (idVictima != null && getColorDeFicha(idFichaAtacante) != getColorDeFicha(idVictima) && entry.getKey() < 101) {
-
-                    // ...la resaltamos como "comible".
-                    botonCasilla.setBorder(javax.swing.BorderFactory.createLineBorder(Color.RED, 3));
-                    botonCasilla.setBorderPainted(true);
+                    if (idVictima != null && getColorDeFicha(idVictima) != colorDelTurno && !casillasSeguras.contains(idDestino)) {
+                        JButton botonVictima = botonesCasillas.get(idDestino);
+                        botonVictima.setBorder(javax.swing.BorderFactory.createLineBorder(Color.RED, 3));
+                        botonVictima.setBorderPainted(true);
+                    }
                 }
-            }
-        }
+            });
     }
 
     /**
@@ -1333,6 +1356,8 @@ public class FondoBGTablero extends ImageBackgroundPanel {
         if (controlador != null && valorDado > 0) {
             mostrarCasillasDestino(valorDado, colorDelTurno, null);
         }
+        // Después de resaltar todo, comprobamos si hay víctimas potenciales.
+        resaltarVictimas(valorDado, colorDelTurno);
         repaint();
     }
 
