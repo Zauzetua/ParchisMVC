@@ -26,6 +26,7 @@ public class JoinFilter implements Filter {
 
             ctx.emitToSelf(new MensajeUnido(yo.id));
             ctx.emitToAll(new MensajeEstado(sala.sala(), sala.turnoActual()));
+            ctx.markMutated(); // Marca que hubo cambios para que se emita el estado a todos
         }
     }
 }

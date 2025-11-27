@@ -45,13 +45,21 @@ public class RegistroJF extends javax.swing.JFrame {
                     // Abrir la sala (lobby) y transferir eventos
                     com.mycompany.parchismvc.View.Sala salaFrame = new com.mycompany.parchismvc.View.Sala(controlador, jugadorId); // abrir lobby
                     controlador.setEvents(salaFrame.getGameEvents()); // ¡IMPORTANTE! Transferir el control de eventos a la nueva ventana.
+                    
+                    // Si ya hay un estado en cache, enviarlo inmediatamente a la vista
+                    var salaActual = controlador.getSalaCache();
+                    var turnoActual = controlador.getTurnoCache();
+                    if (salaActual != null) {
+                        salaFrame.onEstado(salaActual, turnoActual, jugadorId);
+                    }
+                    
                     salaFrame.setLocationRelativeTo(RegistroJF.this);
                     salaFrame.setVisible(true);
                     RegistroJF.this.setVisible(false); // ocultar registro
                 });
             }
             @Override public void onEstado(com.mycompany.parchismvc.Model.Sala sala, UUID turnoDe, UUID yo) {
-                // Podrás actualizar lobby aquí luego
+                // Podrás actualizar lobby aqui luego
             }
             @Override public void onCuentaAtras(int segundos, com.mycompany.parchismvc.Model.Sala sala) { }
             @Override public void onResultado(boolean ok, String mensaje) {
@@ -83,9 +91,9 @@ public class RegistroJF extends javax.swing.JFrame {
     AvataresPanel.setOpaque(false);
     AvataresPanel.setLayout(new GridLayout(2, 2, 20, 20)); // 4 avatares, espacio 20px
 
-        // Define opciones (id que guardarás y ruta del recurso)
+        // Define opciones (id que guardaras y ruta del recurso)
         // NOTA: Los archivos reales en resources son image_1.png ... image_4.png (sin 'n').
-        // Se usan ids lógicos (ratita, perrito, mapache, gatito) que podrás mapear en el servidor.
+        // Se usan ids logicos (ratita, perrito, mapache, gatito) que podras mapear en el servidor.
         Object[][] AVS = new Object[][]{
             { "ratita",  "/Assets/image_1.png"  },
             { "perrito", "/Assets/image_2.png"  },
@@ -103,14 +111,14 @@ public class RegistroJF extends javax.swing.JFrame {
             AvataresPanel.add(b);
         }
 
-        // Selección por defecto
+        // Seleccion por defecto
         if (grupoAvatares.getElements().hasMoreElements()) {
             var it = grupoAvatares.getElements();
             if(it.hasMoreElements()){
                 var first = it.nextElement();
                 first.setSelected(true);
                 avatarSeleccionado = first.getActionCommand();
-                // avatarSeleccionado queda seteado; la UI ya muestra el aro de selección
+                // avatarSeleccionado queda seteado; la UI ya muestra el aro de seleccion
             }
         }
 
@@ -120,7 +128,7 @@ public class RegistroJF extends javax.swing.JFrame {
         
     }
 
-    // Llama a esto cuando presiones “JUGAR” para saber qué avatar enviar al servidor
+    // Llama a esto cuando presiona “JUGAR” para saber qué avatar enviar al servidor
     public String getAvatarSeleccionado() {
         return avatarSeleccionado; // ej. "shoco"
     }
