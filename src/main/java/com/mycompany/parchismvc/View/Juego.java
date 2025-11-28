@@ -306,7 +306,6 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
             if (colorDelTurno != null) {
                 // Resaltamos las fichas que el jugador puede mover con este dado.
                 ((com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero) JPTablero).resaltarFichasMovibles(valor, colorDelTurno);
-                ((com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero) JPTablero).mostrarCasillasDestino(valor, colorDelTurno);
             }
         });
     }

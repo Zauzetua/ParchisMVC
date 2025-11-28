@@ -59,6 +59,14 @@ public class Controlador {
         return ultimoValorDado;
     }
 
+    /**
+     * Obtiene el valor actual del dado desde la caché del controlador.
+     * @return El último valor obtenido en el dado.
+     */
+    public int getValorDado() {
+        return this.ultimoValorDado;
+    }
+
     // Esperas sincronas (para que tu Vista funcione igual que local)
     private CompletableFuture<MensajeUnido> pendingUnido;
 
