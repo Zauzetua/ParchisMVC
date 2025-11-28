@@ -233,13 +233,11 @@ public class ServicioJuego {
      * @return El jugador actual o null si no hay jugadores
      */
     public Jugador jugadorActual() {
-        Sala s = sala();
-        if (s.jugadores.isEmpty()) {
-            return null;
-        }
-        return s.jugadores.get(s.indiceTurno);
-    }
-
+    Sala s = sala();
+    if (s.jugadores.isEmpty()) return null;
+    normalizarTurnoHastaConectado();  
+    return s.jugadores.get(s.indiceTurno);
+}
     /**
      * Tira el dado para el jugador actual (si es su turno)
      * 
@@ -269,97 +267,112 @@ public class ServicioJuego {
      * @return Mensaje de resultado de la accion
      */
     public String moverFicha(UUID jugadorId, int indiceFicha) {
-        Sala s = sala();
-        Jugador actual = jugadorActual();
-        if (actual == null || !actual.id.equals(jugadorId)) {
-            return "No es tu turno";
-        }
-        Integer valor = ultimoValorTirado.get(jugadorId);
-        if (valor == null || valor == 0) {
-            return "Aun no has tirado el dado";
-        }
-        List<Ficha> mis = s.fichasPorJugador.get(jugadorId);
-        if (mis == null || indiceFicha < 0 || indiceFicha >= mis.size()) {
-            return "Indice de ficha invalido";
-        }
-        Ficha f = mis.get(indiceFicha);
-
-        if (f.estado == EstadoFicha.BASE) {
-            if (valor != 5) {
-                pasarTurno();
-                return "Necesitas un 5 para salir de base. Turno pasado.";
-            } else {
-                int posInicio = inicioPorColor.get(actual.color);
-                f.posicion = posInicio;
-                f.estado = EstadoFicha.EN_TABLERO;
-                aplicarCapturaYBloqueoAlColocar(f);
-                boolean extra = tieneTurnoExtra.getOrDefault(jugadorId, false);
-                pasarTurno();
-                return "Ficha sacada a tablero en casilla " + f.posicion;
-            }
-        }
-
-        if (f.estado == EstadoFicha.EN_TABLERO) {
-            // CASO ESPECIAL: La ficha está en la casilla de entrada a su pasillo.
-            int entradaPasillo = getCasillaEntradaPasillo(actual.color);
-            if (f.posicion == entradaPasillo) {
-                int primerPasoPasillo = getPrimerPasoPasillo(actual.color);
-                int meta = getMeta(actual.color);
-                int destino = primerPasoPasillo + valor - 1; // -1 porque el primer paso ya se cuenta
-                if (destino > meta) { // Rebote
-                    destino = meta - (destino - meta);
-                }
-                f.posicion = destino;
-                pasarTurno();
-                return "Ficha entra al pasillo y se mueve a " + f.posicion;
-            }
-
-            // Lógica para movimiento en el tablero principal o entrada al pasillo final
-            if (f.posicion <= 68) { 
-                // Comprobamos si el movimiento lleva a la ficha a la entrada de su pasillo o más allá.
-                for (int i = 1; i <= valor; i++) {
-                    int posIntermedia = (f.posicion - 1 + i) % TAM_TABLERO + 1;
-                    if (posIntermedia == entradaPasillo) {
-                        // La ficha ha llegado a la entrada del pasillo.
-                        int pasosDentroDelPasillo = valor - i;
-                        int destinoFinal = getPrimerPasoPasillo(actual.color) + pasosDentroDelPasillo;
-                        f.posicion = destinoFinal;
-                        pasarTurno();
-                        return "Ficha entra al pasillo y se mueve a " + f.posicion;
-                    }
-                }
-
-                // Si no se cruza con la entrada del pasillo, es un movimiento normal.
-                int destinoNormal = (f.posicion - 1 + valor) % TAM_TABLERO + 1;
-                if (posicionBloqueadaPorRival(destinoNormal, actual.id)) {
-                    pasarTurno();
-                    return "Movimiento bloqueado por bloqueo rival en casilla " + destinoNormal + ". Turno terminado.";
-                }
-                f.posicion = destinoNormal;
-                aplicarCapturaYBloqueoAlColocar(f);
-                pasarTurno();
-                return "Ficha movida a posición " + f.posicion;
-            } 
-            // Lógica para movimiento DENTRO del pasillo final
-            else { // La ficha ya está en el pasillo (pos > 68)
-                int meta = getMeta(actual.color);
-                int destino = f.posicion + valor;
-
-                if (destino > meta) { // Rebote
-                    destino = meta - (destino - meta);
-                } else if (destino == meta) {
-                    f.estado = EstadoFicha.CASA;
-                    f.posicion = -1; // Marcar como en casa
-                }
-                f.posicion = destino;
-                pasarTurno();
-                comprobarVictoria(actual);
-                return "Ficha movida a posición " + f.posicion;
-            }
-        }
-
-        return "Movimiento no permitido";
+    Sala s = sala();
+    Jugador actual = jugadorActual();                    // jugadorActual() ya normaliza a conectado
+    if (actual == null || !actual.id.equals(jugadorId)) {
+        return "No es tu turno";
     }
+
+    Integer valor = ultimoValorTirado.get(jugadorId);
+    if (valor == null || valor == 0) {
+        return "Aun no has tirado el dado";
+    }
+
+    List<Ficha> mis = s.fichasPorJugador.get(jugadorId);
+    if (mis == null || indiceFicha < 0 || indiceFicha >= mis.size()) {
+        return "Indice de ficha invalido";
+    }
+    Ficha f = mis.get(indiceFicha);
+
+    // helper local: consumir tiro y avanzar turno si NO hay extra
+    Runnable cerrarTurno = () -> {
+        // consumir el tiro actual
+        ultimoValorTirado.put(jugadorId, 0);
+        boolean extra = tieneTurnoExtra.getOrDefault(jugadorId, false);
+        // limpiar bandera de extra
+        if (extra) {
+            tieneTurnoExtra.put(jugadorId, false);
+        } else {
+            // avanzar y saltar desconectados
+            avanzarTurnoYNormalizar();
+        }
+    };
+
+    // ===== 1) FICHA EN BASE =====
+    if (f.estado == EstadoFicha.BASE) {
+        if (valor != 5) {
+            // no sale, pierde turno
+            cerrarTurno.run();
+            return "Necesitas un 5 para salir de base. Turno pasado.";
+        } else {
+            int posInicio = inicioPorColor.get(actual.color);
+            f.posicion = posInicio;
+            f.estado = EstadoFicha.EN_TABLERO;
+            aplicarCapturaYBloqueoAlColocar(f);
+            cerrarTurno.run();
+            return "Ficha sacada a tablero en casilla " + f.posicion;
+        }
+    }
+
+    // ===== 2) FICHA EN TABLERO / PASILLO =====
+    if (f.estado == EstadoFicha.EN_TABLERO) {
+        int entradaPasillo = getCasillaEntradaPasillo(actual.color);
+
+        // 2.a) Exactamente en la entrada del pasillo: se mueve dentro del pasillo
+        if (f.posicion == entradaPasillo) {
+            int primerPaso = getPrimerPasoPasillo(actual.color);
+            int meta = getMeta(actual.color);
+            int destino = primerPaso + valor - 1;           // -1 porque el primer paso ya cuenta
+            if (destino > meta) destino = meta - (destino - meta); // rebote
+            f.posicion = destino;
+            cerrarTurno.run();
+            return "Ficha entra al pasillo y se mueve a " + f.posicion;
+        }
+
+        // 2.b) Movimiento en tablero principal (pos <= 68) con posible cruce a pasillo
+        if (f.posicion <= 68) {
+            for (int i = 1; i <= valor; i++) {
+                int posIntermedia = (f.posicion - 1 + i) % TAM_TABLERO + 1;
+                if (posIntermedia == entradaPasillo) {
+                    // entra al pasillo
+                    int pasosDentro = valor - i;
+                    int destinoFinal = getPrimerPasoPasillo(actual.color) + pasosDentro;
+                    f.posicion = destinoFinal;
+                    cerrarTurno.run();
+                    return "Ficha entra al pasillo y se mueve a " + f.posicion;
+                }
+            }
+
+            // Movimiento normal en tablero
+            int destinoNormal = (f.posicion - 1 + valor) % TAM_TABLERO + 1;
+            if (posicionBloqueadaPorRival(destinoNormal, actual.id)) {
+                cerrarTurno.run();
+                return "Movimiento bloqueado por bloqueo rival en casilla " + destinoNormal + ". Turno terminado.";
+            }
+            f.posicion = destinoNormal;
+            aplicarCapturaYBloqueoAlColocar(f);
+            cerrarTurno.run();
+            return "Ficha movida a posición " + f.posicion;
+        }
+
+        // 2.c) Ya está en el pasillo (pos > 68)
+        int meta = getMeta(actual.color);
+        int destino = f.posicion + valor;
+        if (destino > meta) {
+            destino = meta - (destino - meta);              // rebote
+        } else if (destino == meta) {
+            f.estado = EstadoFicha.CASA;
+            f.posicion = -1;                                 // marca en casa
+        } else {
+            f.posicion = destino;
+        }
+        cerrarTurno.run();
+        comprobarVictoria(actual);
+        return "Ficha movida a posición " + (f.estado == EstadoFicha.CASA ? "CASA" : f.posicion);
+    }
+
+    return "Movimiento no permitido";
+}
 
     private int getCasillaEntradaPasillo(ColorJugador color) {
         return switch (color) {
@@ -542,15 +555,6 @@ public class ServicioJuego {
         return sb.toString();
     }
     
-    
-    public void pasarTurnoPorTiempo() {
-    Jugador actual = jugadorActual();
-    if (actual == null) return;
-    // si habia un valor de dado pendiente, lo descartamos
-    ultimoValorTirado.remove(actual.id);
-    tieneTurnoExtra.put(actual.id, false);
-    avanzarTurno(); // metodo privado de la misma clase
-}
 
     /**
      * Obtiene el tiempo por turno en segundos
@@ -595,32 +599,50 @@ public class ServicioJuego {
         }
         return "Jugador " + jugadorADesconectar.nombre + " se ha desconectado.";
     }
-    
-    public void regresarFichasABase(UUID jugadorId) {
+    private void avanzarTurnoYNormalizar() {
     Sala s = sala();
-    List<Ficha> fichas = s.fichasPorJugador.get(jugadorId);
-    if (fichas == null) return;
-
-    for (Ficha f : fichas) {
-        f.posicion = -1;
-        f.estado = EstadoFicha.BASE;
-    }
-    // limpiar estado de tirada/turno extra
-    ultimoValorTirado.remove(jugadorId);
-    tieneTurnoExtra.remove(jugadorId);
+    if (s.jugadores.isEmpty()) return;
+    s.indiceTurno = (s.indiceTurno + 1) % s.jugadores.size();
+    normalizarTurnoHastaConectado();
 }
 
-/**
- * Si el jugador desconectado estaba en turno, pasa el turno al siguiente.
- * (Consume cualquier tirada pendiente y desactiva turno extra).
- */
-public void pasarTurnoPorDesconexion(UUID jugadorId) {
-    Jugador actual = jugadorActual();
-    if (actual != null && actual.id.equals(jugadorId)) {
-        ultimoValorTirado.remove(jugadorId);
-        tieneTurnoExtra.put(jugadorId, false);
-        avanzarTurno(); // método privado ya existente dentro del servicio
+// Recorre en círculo hasta que el jugador del índice esté conectado
+private void normalizarTurnoHastaConectado() {
+    Sala s = sala();
+    if (s.jugadores.isEmpty()) return;
+    int guard = 0;
+    while (guard < s.jugadores.size()) {
+        Jugador j = s.jugadores.get(s.indiceTurno);
+        if (j.conectado) break;             // listo: encontramos uno activo
+        s.indiceTurno = (s.indiceTurno + 1) % s.jugadores.size();
+        guard++;
     }
+}
+
+// Útil cuando el que se fue era el del turno (o quedan varios desconectados seguidos)
+public void pasarTurnoPorDesconexion(UUID jugadorId) {
+    Sala s = sala();
+    if (s.jugadores.isEmpty()) return;
+    // si el que se desconectó era el del turno, avanza una vez
+    Jugador act = jugadorActual();
+    if (act != null && act.id.equals(jugadorId)) {
+        s.indiceTurno = (s.indiceTurno + 1) % s.jugadores.size();
+    }
+    normalizarTurnoHastaConectado();        // y luego salta a un conectado
+}
+
+// Cuando se agota el tiempo:
+public void pasarTurnoPorTiempo() {
+    avanzarTurnoYNormalizar();
+}
+
+// Si no lo tienes aún:
+public void regresarFichasABase(UUID jugadorId){
+    Sala s = sala();
+    var lista = s.fichasPorJugador.get(jugadorId);
+    if (lista != null) {
+        for (var f : lista) { f.estado = EstadoFicha.BASE; f.posicion = -1; }
+    }
+}
 }
     
-}

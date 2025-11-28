@@ -14,4 +14,5 @@ public interface GameEvents {
     void onResultado(boolean ok, String mensaje);
     void onDado(UUID jugadorId, int valor);
     void onError(String razon);
+    void onFinPartida(boolean heGanado, UUID ganadorId);
 }

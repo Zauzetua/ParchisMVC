@@ -32,6 +32,7 @@ public class RegistroJF extends javax.swing.JFrame {
     }
     private void inicializarControlador(){
         controlador = new Controlador();
+        
         controlador.setEvents(new GameEvents() {
             @Override public void onConectado(String host, int puerto, String salaId) {
                 safe(() -> mostrarInfo("Conectado a "+host+":"+puerto+" sala="+salaId));
@@ -67,6 +68,11 @@ public class RegistroJF extends javax.swing.JFrame {
             }
             @Override public void onDado(UUID jugadorId, int valor) { }
             @Override public void onError(String razon) { safe(() -> mostrarError(razon)); }
+
+            @Override
+            public void onFinPartida(boolean heGanado, UUID ganadorId) {
+                throw new UnsupportedOperationException("Not supported yet."); 
+            }
         });
     }
 

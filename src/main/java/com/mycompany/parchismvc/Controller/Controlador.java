@@ -418,6 +418,20 @@ public class Controlador {
 
                 }
 
+                case FIN_PARTIDA -> {
+                    var fin = (com.mycompany.parchismvc.net.dto.MensajeFinPartida) m;
+                    Vista.mostrarInfo("Partida finalizada: " + fin.motivo);
+                    
+                    // Si hay un ganador y soy yo, mostrar victoria; si no, derrota
+                    boolean heGanado = (fin.ganadorId != null && fin.ganadorId.equals(miId));
+                    
+                    if(events!=null) {
+                        events.onFinPartida(heGanado, fin.ganadorId);
+                    }
+                    
+                    // Opcional: cerrar la conexión después de un momento
+                    // desconectar();
+                }
                 case ERROR -> {
                     var er = (MensajeError) m;
                     Vista.mostrarError(er.razon);

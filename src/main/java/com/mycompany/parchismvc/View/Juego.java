@@ -312,6 +312,14 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
     @Override
     public void onError(String razon) { }
     
+    @Override
+    public void onFinPartida(boolean heGanado, UUID ganadorId) {
+        SwingUtilities.invokeLater(() -> {
+            // Llamar al método del tablero para mostrar la pantalla final
+            ((com.mycompany.parchismvc.View.UtilsFront.FondoBGTablero) JPTablero).mostrarPantallaFinal(heGanado);
+        });
+    }
+    
 
     /**
      * @param args the command line arguments

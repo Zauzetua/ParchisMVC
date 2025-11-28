@@ -150,6 +150,14 @@ public class Sala extends JFrame implements GameEvents {
     public void onError(String razon) {
         SwingUtilities.invokeLater(() -> lblEstado.setText("Error: " + razon));
     }
+    
+    @Override
+    public void onFinPartida(boolean heGanado, UUID ganadorId) {
+        SwingUtilities.invokeLater(() -> {
+            lblEstado.setText(heGanado ? "¡Has ganado!" : "Partida finalizada");
+            // Opcional: cerrar o deshabilitar controles
+        });
+    }
 
     // === Inner components ===
     private static class PlayerSlotPanel extends JPanel {

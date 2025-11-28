@@ -1,5 +1,6 @@
 package com.mycompany.parchismvc.net.Server;
 
+import com.mycompany.parchismvc.Model.EstadoSala;
 import com.mycompany.parchismvc.Model.Jugador;
 import com.mycompany.parchismvc.Model.Sala;
 import com.mycompany.parchismvc.Repo.IRepositorioSala;
@@ -152,6 +153,43 @@ public class ParchisServidorMin {
         iniciarRelojTurno();
     }
 }
+
+    public void terminarSiQuedanMenosDe2() {
+    long conectados = sala().jugadores.stream().filter(j -> j.conectado).count();
+
+    // Queremos cerrar tanto si estaba JUGANDO como si estaba INICIANDO
+    if ((sala().estado == EstadoSala.JUGANDO || sala().estado == EstadoSala.INICIANDO)
+            && conectados < 2) {
+
+        // apaga timers de inicio y de turno
+        if (tareaInicio != null && !tareaInicio.isDone()) tareaInicio.cancel(false);
+        if (tareaTick   != null && !tareaTick.isDone())   tareaTick.cancel(false);
+        cancelarRelojTurno();
+
+        // si queda 1 conectado, es el ganador; si 0, sin ganador
+        UUID ganador = null;
+        if (conectados == 1) {
+            ganador = sala().jugadores.stream()
+                    .filter(j -> j.conectado)
+                    .map(j -> j.id)
+                    .findFirst().orElse(null);
+        }
+
+        sala().estado  = EstadoSala.FINALIZADA;
+        sala().ganador = ganador;
+
+        String msg = (conectados == 1)
+                ? "Partida finalizada: queda un solo jugador activo (se cierra para todos)."
+                : "Partida finalizada: no quedan jugadores activos (se cierra para todos).";
+
+        // Mensajes informativos + snapshot final
+        broadcast(new com.mycompany.parchismvc.net.dto.MensajeResultado(true, msg));
+        broadcast(new com.mycompany.parchismvc.net.dto.MensajeEstado(sala(), turnoActual()));
+
+        // ORDEN DE CIERRE para todos los clientes (incluye UUID del ganador)
+        broadcast(new com.mycompany.parchismvc.net.dto.MensajeFinPartida(msg, ganador));
+    }
+}
         
     }
 
@@ -194,32 +232,37 @@ public class ParchisServidorMin {
                 new BroadcastFilter()
             );
         }
+        
         private void onDisconnect() {
     try {
         if (sala == null || yo == null) return;
-        synchronized (sala.lock) {
-            sala.clientes.remove(this);
-         
+       synchronized (sala.lock) {
+    sala.clientes.remove(this);
+    yo.conectado = false;
 
-            
-            sala.servicio.regresarFichasABase(yo.id);
+    // ¿se termina la partida por quedar <2?
+    sala.terminarSiQuedanMenosDe2();
+    if (sala.sala().estado == EstadoSala.FINALIZADA) return;
 
-            UUID turnoAntes = sala.turnoActual();
-            sala.servicio.pasarTurnoPorDesconexion(yo.id);
+    // regresar fichas y normalizar turno
+    sala.servicio.regresarFichasABase(yo.id);
+    UUID turnoAntes = sala.turnoActual();
+    sala.servicio.pasarTurnoPorDesconexion(yo.id);
 
-            sala.cancelarRelojTurno();
-            if (!java.util.Objects.equals(turnoAntes, sala.turnoActual())) {
-                sala.iniciarRelojTurno();
-            }
+    // reloj
+    sala.cancelarRelojTurno();
+    if (!java.util.Objects.equals(turnoAntes, sala.turnoActual())) {
+        sala.iniciarRelojTurno();
+    } else {
+        // si no cambió (p.ej. el que se fue no era el del turno), asegúrate de que el actual esté conectado
+        // jugadorActual() ya normaliza; por claridad puedes dejar así.
+        sala.iniciarRelojTurno();
+    }
 
-            sala.broadcast(new com.mycompany.parchismvc.net.dto.MensajeResultado(
-                true,
-                yo.nombre + " se desconectó: sus fichas volvieron a BASE y se pasó el turno si aplicaba."
-            ));
-            sala.broadcast(new com.mycompany.parchismvc.net.dto.MensajeEstado(
-                sala.sala(), sala.turnoActual()
-            ));
-        }
+    sala.broadcast(new MensajeResultado(true,
+        yo.nombre + " se desconectó: sus fichas volvieron a BASE y se pasó el turno si aplicaba."));
+    sala.broadcast(new MensajeEstado(sala.sala(), sala.turnoActual()));
+}
     } catch (Exception ignored) {}
 }
 

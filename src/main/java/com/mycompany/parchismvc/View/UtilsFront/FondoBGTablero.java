@@ -1576,7 +1576,7 @@ public class FondoBGTablero extends ImageBackgroundPanel {
      * Muestra una imagen de victoria o derrota a pantalla completa y cierra el juego después de un retardo.
      * @param haGanado True si el jugador local ha ganado, false en caso contrario.
      */
-    private void mostrarPantallaFinal(boolean haGanado) {
+    public void mostrarPantallaFinal(boolean haGanado) {
         // Deshabilita todos los componentes para evitar más interacciones.
         for (Component comp : getComponents()) {
             comp.setEnabled(false);
