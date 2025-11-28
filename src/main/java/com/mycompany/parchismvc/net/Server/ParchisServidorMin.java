@@ -194,6 +194,34 @@ public class ParchisServidorMin {
                 new BroadcastFilter()
             );
         }
+        private void onDisconnect() {
+    try {
+        if (sala == null || yo == null) return;
+        synchronized (sala.lock) {
+            sala.clientes.remove(this);
+         
+
+            
+            sala.servicio.regresarFichasABase(yo.id);
+
+            UUID turnoAntes = sala.turnoActual();
+            sala.servicio.pasarTurnoPorDesconexion(yo.id);
+
+            sala.cancelarRelojTurno();
+            if (!java.util.Objects.equals(turnoAntes, sala.turnoActual())) {
+                sala.iniciarRelojTurno();
+            }
+
+            sala.broadcast(new com.mycompany.parchismvc.net.dto.MensajeResultado(
+                true,
+                yo.nombre + " se desconectó: sus fichas volvieron a BASE y se pasó el turno si aplicaba."
+            ));
+            sala.broadcast(new com.mycompany.parchismvc.net.dto.MensajeEstado(
+                sala.sala(), sala.turnoActual()
+            ));
+        }
+    } catch (Exception ignored) {}
+}
 
         public SalaActiva getSala() { return sala; }
         public void setSala(SalaActiva sala) { this.sala = sala; }
@@ -218,9 +246,12 @@ public class ParchisServidorMin {
             } catch (EOFException eof) {
                 System.out.println("[SERVIDOR] Cliente cerro conexión: " + socket.getRemoteSocketAddress());
                 if (sala != null) sala.removeCliente(this);
+                onDisconnect();
+
             } catch (Exception e) {
                 System.out.println("[SERVIDOR] Cliente fuera: " + e.getMessage());
                 if (sala != null) sala.removeCliente(this);
+                onDisconnect();
             }
         }
 

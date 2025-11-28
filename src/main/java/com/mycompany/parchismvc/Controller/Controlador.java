@@ -436,4 +436,6 @@ public class Controlador {
         try { if(red!=null) red.close(); } catch(Exception ignored) {}
     }
 
+    
+    
 }

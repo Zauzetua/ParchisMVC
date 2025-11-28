@@ -595,4 +595,32 @@ public class ServicioJuego {
         }
         return "Jugador " + jugadorADesconectar.nombre + " se ha desconectado.";
     }
+    
+    public void regresarFichasABase(UUID jugadorId) {
+    Sala s = sala();
+    List<Ficha> fichas = s.fichasPorJugador.get(jugadorId);
+    if (fichas == null) return;
+
+    for (Ficha f : fichas) {
+        f.posicion = -1;
+        f.estado = EstadoFicha.BASE;
+    }
+    // limpiar estado de tirada/turno extra
+    ultimoValorTirado.remove(jugadorId);
+    tieneTurnoExtra.remove(jugadorId);
+}
+
+/**
+ * Si el jugador desconectado estaba en turno, pasa el turno al siguiente.
+ * (Consume cualquier tirada pendiente y desactiva turno extra).
+ */
+public void pasarTurnoPorDesconexion(UUID jugadorId) {
+    Jugador actual = jugadorActual();
+    if (actual != null && actual.id.equals(jugadorId)) {
+        ultimoValorTirado.remove(jugadorId);
+        tieneTurnoExtra.put(jugadorId, false);
+        avanzarTurno(); // método privado ya existente dentro del servicio
+    }
+}
+    
 }

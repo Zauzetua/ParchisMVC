@@ -112,7 +112,7 @@ public class Juego extends javax.swing.JFrame implements GameEvents {
         lblJugadorAzul = new javax.swing.JLabel();
         lblJugadorAmarillo = new javax.swing.JLabel();
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setPreferredSize(new java.awt.Dimension(1022, 521));
 
         jPanel1.setBackground(new java.awt.Color(21, 79, 102));
