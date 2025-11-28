@@ -897,13 +897,24 @@ public class FondoBGTablero extends ImageBackgroundPanel {
                 }
                 else if (esDestinoValido(boton, fichaClicadaId)) {
                     ejecutarMovimientoOCaptura(boton);
-                } else { 
+                } else {
                     // PRIORIDAD 2: Si no es un destino, comprobar si es otra ficha propia para cambiar la selección.
                     if (fichaClicadaId != null && miColor.equals(getColorDeFicha(fichaClicadaId))) {
 
-                        // CASO ESPECIAL: Se seleccionó una ficha de base y luego una del tablero.
-                        boolean clicEnTablero = idCasillaClicada < 101;
-                        if (origenEnBase && clicEnTablero) {
+                        // CASO ESPECIAL: Se seleccionó una ficha "x1" y se hace clic en otra ficha propia "x2"
+                        // que está en la casilla de destino de "x1".
+                        int valorDadoActual = controlador.getValorDado();
+                        int destinoCalculado = calcularDestino(idCasillaOrigen, valorDadoActual, miColor);
+
+                        if (idCasillaClicada == destinoCalculado) {
+                            // La ficha clicada ("x2") está en el destino de la ficha seleccionada ("x1").
+                            // Mostramos el menú de opciones.
+                            Runnable accionMovimiento = () -> ejecutarMovimientoOCaptura(boton);
+                            mostrarMenuBloqueo(boton, accionMovimiento);
+                            return; // Esperamos la decisión del menú.
+                        }
+
+                        if (origenEnBase) {
                             Runnable accionMovimiento = () -> ejecutarMovimientoOCaptura(botonesCasillas.get(idDestino));
                             mostrarMenuBloqueo(boton, accionMovimiento);
                             return; // Esperamos la decisión del menú.
