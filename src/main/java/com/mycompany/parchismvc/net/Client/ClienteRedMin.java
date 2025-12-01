@@ -32,11 +32,15 @@ public class ClienteRedMin implements Closeable {
     public void onMensaje(Consumer<Mensaje> handler){ this.onMensaje = handler; }
 
     public void conectar() throws IOException {
-        socket = new Socket(host, puerto);
+        socket = new Socket("127.0.0.1", puerto);
         out = new ObjectOutputStream(socket.getOutputStream());
         in  = new ObjectInputStream(socket.getInputStream());
         lector = new Thread(this::bucleLectura, "lector-red");
         lector.start();
+    }
+
+    public boolean isReady(){
+        return socket != null && socket.isConnected() && out != null && in != null;
     }
 
     private void bucleLectura(){
@@ -49,6 +53,7 @@ public class ClienteRedMin implements Closeable {
     }
 
     public synchronized void enviar(Mensaje m) throws IOException {
+        if(out == null) throw new IOException("No conectado (stream no inicializado)");
         out.writeObject(m); out.flush();
     }
 
