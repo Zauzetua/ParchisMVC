@@ -5,7 +5,7 @@ Home:
 https://github.com/Zauzetua/ParchisMVC/wiki
 
 Arquitectura del sistema:
-https://github.com/Zauzetua/ParchisMVC/wiki/Arquitectura-del-sistema.
+https://github.com/Zauzetua/ParchisMVC/wiki/Arquitectura-del-sistema
 
 Patrones de diseño aplicados:
 https://github.com/Zauzetua/ParchisMVC/wiki/Patrones-de-dise%C3%B1o-aplicados
